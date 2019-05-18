@@ -1,5 +1,5 @@
 title = "Data structures in practice"
-baseURL = "https://data-structures-in-practice.com/"
+baseURL = "https://www.data-structures-in-practice.com/"
 languageCode = "en-us"
 
 pygmentsCodefences = true
