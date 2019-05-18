@@ -1,6 +1,6 @@
 ---
 title: "Big O notation"
-date: 2019-04-07T20:27:04+01:00
+date: 2019-05-18T12:27:04+01:00
 ---
 
 In this post you'll learn how to use big O notation to compare the performance of different algorithms.<!--more-->

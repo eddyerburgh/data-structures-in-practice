@@ -1,7 +1,7 @@
 ---
 Title: "Arrays"
 Summary: Learn what arrays are, why they're useful, and how they are implemented in C and Ruby.
-date: 2019-04-07T20:27:04+01:00
+date: 2019-05-18T12:27:04+01:00
 ---
 
 In order to master data structures you need a solid understanding of the basics. In this post you'll learn what arrays are, why they are useful, and how they are implemented in C and Ruby.<!--more-->
