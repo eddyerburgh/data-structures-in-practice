@@ -1,0 +1,21 @@
+title = "Data structures in practice"
+baseURL = "https://data-structures-in-practice.com/"
+languageCode = "en-us"
+
+pygmentsCodefences = true
+PygmentsStyle = "monokai"
+background_color = "#f8f8f2"
+
+disqusShortname = "data-structures-in-practice"
+googleAnalytics = "UA-74647525-2"
+
+[Params]
+  description = "Learn about data structures and how they are used in open source projects."
+  author = "Edd Yerburgh"
+
+[menu]
+  [[menu.main]]
+    identifier = "about"
+    name = "about"
+    url = "/about/"
+    weight = -110

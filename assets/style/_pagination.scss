@@ -1,0 +1,23 @@
+.pagination {
+  display: flex;
+
+  a {
+    color: #fff;
+    font-size: 0.8125rem;
+    line-height: 2.125rem;
+    background: $body-color;
+    border-radius: 2.125rem;
+    text-decoration: none;
+  }
+
+  .prev {
+    padding-left: 1rem;
+    padding-right: 1.125rem;
+  }
+
+  .next {
+    margin-left: auto;
+    padding-left: 1.125rem;
+    padding-right: 1rem;
+  }
+}

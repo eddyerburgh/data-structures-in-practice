@@ -1,0 +1,32 @@
+.post-content {
+  margin-bottom: 3rem;
+
+  a {
+    text-decoration: underline;
+  }
+}
+
+.main {
+  max-width: 37rem;
+  display: block;
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 0;
+}
+
+.post-meta {
+  color: $secondary-color;
+  font-size: 0.8125rem;
+  letter-spacing: 0.0313rem;
+}
+
+.post-title {
+  transform: translateX(-1px);
+}
+
+.post-header {
+  margin-bottom: 2.25rem;
+}
+
+.post-entry {
+  margin-bottom: 3.75rem;
+}

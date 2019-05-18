@@ -1,0 +1,9 @@
+$primary-color: #0088ff;
+$body-color: #272721;
+$secondary-color: black;
+
+@import "./normalize.scss";
+@import "./base.scss";
+@import "./content.scss";
+@import "./header.scss";
+@import "./pagination.scss";

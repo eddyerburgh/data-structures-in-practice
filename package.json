@@ -1,0 +1,13 @@
+{
+  "name": "data-structures-in-practice",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "format": "prettier --write '**/*.{scss,md,yaml}'",
+    "serve": "hugo serve -D"
+  },
+  "devDependencies": {
+    "prettier": "^1.17.1"
+  }
+}
