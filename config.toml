@@ -19,3 +19,6 @@ googleAnalytics = "UA-74647525-2"
     name = "about"
     url = "/about/"
     weight = -110
+
+[permalinks]
+  posts = "/:title"
