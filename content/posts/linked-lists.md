@@ -3,7 +3,7 @@ title: "Linked lists"
 date: 2019-09-13T12:28:04+01:00
 ---
 
-This post will teach you what linked lists are, why they're useful, and how they're used in the cURL project to set HTTP headers.<!--more-->
+This post will teach you what linked lists are, why they're useful, and how they're used in cURL to set HTTP headers.<!--more-->
 
 ## What are linked lists?
 
