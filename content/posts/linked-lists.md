@@ -15,7 +15,7 @@ Each element (or **node**) in the list contains a value and a reference to the n
 
 The simplest linked list is a **singly linked list**, where each node points to the next node in the list. In a singly linked list, the final node points to a null value.
 
-In C, you can represent a singly linked list as a `list` structure containing `data` and a `next` pointer to another `list`:
+You can represent a singly linked list as a `list` structure containing `data` and a `next` pointer to another `list`:
 
 ```c
 typedef struct list {
@@ -24,11 +24,11 @@ typedef struct list {
 } list;
 ```
 
-To find an element in a list you need to visit each node one after the other, starting at the first node in the list (the __head__) and finishing at the last node (the __tail__).
+To find an element in a list you need to visit each node one after the other, starting at the first node in the list (the **head**) and finishing at the last node (the **tail**).
 
 {{< figure src="/images/linked-lists/singly-linked-list-with-head.svg" title="Figure 2: A linked list with a head and tail" >}}
 
-The following `find` function demonstrates how you would search a linked list. Using a reference to the first node in the list (`head`), `find` loops through each node and checks to see if the node contains the data it's searching for:
+The following `find` function demonstrates how you would search a linked list. Starting from the first node in the list (`head`), `find` loops through each node and checks to see if the node contains the data it's searching for:
 
 ```c
 list* find(list* head, DATA data) {
@@ -43,7 +43,7 @@ list* find(list* head, DATA data) {
 }
 ```
 
-An algorithm to find a list node might need to traverse an entire list in the worst case. This makes linked list search an O(n) operation.
+An algorithm to find a list node may need to traverse an entire list in the worst case. This makes linked list search an O(n) operation.
 
 In contrast, linked list insertion takes constant time. An `insert` method can insert a new node by creating a node dynamically and changing the pointers of existing nodes.
 
@@ -63,11 +63,11 @@ Now you know what a linked list is, the next question is _why use them_?
 
 There are three main benefits of linked lists:
 
-1. They can grow dynamically.
+1. They grow dynamically.
 2. They have constant time insertion and deletion.
 3. They're easy to implement.
 
-A big plus for linked lists is that they grow dynamically. You can add and remove nodes on-demand without needing to either perform costly resizing operations, or specify the number of elements at compile time.
+A big plus for linked lists is that they grow and shrink dynamically. You can add and remove nodes on demand without performing costly resizing operations.
 
 Another benefit is the speed of insertion and deletion, which are both O(1) operations.
 
@@ -80,7 +80,7 @@ You can see the cost of the common operations in the following table:
 | Insertion | O(1)       |
 | Deletion  | O(1)       |
 
-The final benefit is that they're easy to implement (meaning less surface area for bugs).
+The final benefit is that they're easy to implement (which means less surface area for bugs).
 
 The rest of this post will dive into the details of how linked lists are implemented and used in the cURL project.
 
@@ -104,11 +104,11 @@ curl --header "X-MyHeader: 123" http://www.google.com
 
 Both curl and libcurl represent headers as linked lists.
 
-### Representing a linked list
+### Implementing a linked list
 
 cURL has two linked list data structures: `curl_llist` and `curl_slist`. `curl_slist` is the data structure used to represent HTTP headers.
 
-`curl_slist` is a singly linked list that holds strings (hence the name _slist_). Each node contains a pointer to a string (`data`) and a pointer to the next node in the list (`next`):
+`curl_slist` is a singly linked list that holds strings (hence the name _slist_, short for _string list_). Each node contains a pointer to a string (`data`) and a pointer to the next node in the list (`next`):
 
 ```c
 struct curl_slist {
@@ -176,7 +176,6 @@ struct curl_slist *Curl_slist_append_nodup(struct curl_slist *list, char *data)
 }
 ```
 
-
 `slist_get_last` loops through until it reaches an item where `next` points to `NULL`. This is the last item in the list, and so it's returned:
 
 ```c
@@ -202,7 +201,7 @@ Before that, a quick primer on HTTP/1.1.
 
 HTTP/1.1 is an application protocol for sending data between a client and a server. It was created with ease-of-use in mind.
 
-HTTP/1.1 is ASCII-encoded, so it's human readable. A request contains a **request-line** (in the form `Method Request-URI HTTP-Version CRLF`), and a variable length list of **headers**.
+HTTP/1.1 is ASCII-encoded, so it's human readable. A request contains a **request-line** (in the form `Method Request-URI HTTP-Version CRLF`), and a variable-length list of **headers**.
 
 An HTTP/1.1 GET request might look like this:
 
@@ -213,19 +212,19 @@ User-Agent: curl/7.54.0
 Accept: */*
 ```
 
-HTTP is typically sent over TCP. On POSIX-compliant systems, TCP connections are created using the sockets API. **Sockets** are an abstraction that let you establish a TCP connection with a server process (often running on a remote host) and send/ receive data over the connection. You can send data to an open socket using the POSIX-defined `send` function.
+HTTP is typically sent over TCP. On POSIX-compliant systems, TCP connections are created using the sockets API. **Sockets** are an abstraction that let you establish a TCP connection with another process (often running on a remote host) and send/ receive data over the connection. You can send data to an open socket using the POSIX-defined `send` function.
 
 The main takeaway here is that cURL can send an HTTP request by calling `send` with the HTTP request as a string.
 
-The next section will look at how the data gets converted from the initial options, into a linked list, and then into the HTTP request string that `send` is called with.
+The next section will look at how headers gets converted from command-line options, into a linked list, and then into the HTTP request string that `send` is called with.
 
 ### Adding custom headers in curl
 
-In libcurl, custom headers are passed in as `curl_slist`. So `curl_slist` is a user-facing data structure.
+In libcurl, custom headers are set using a `curl_slist` structure. So `curl_slist` is a user-facing data structure.
 
-curl (the tool) uses libcurl internally. Most of the work curl does it to convert command line arguments into configuration operations for libcurl.
+curl (the tool) uses libcurl internally. In fact, most of the work curl does it to convert command-line options into configuration operations for libcurl.
 
-To make a request with the libcurl _easy API_, you create a `CURL` handle (called an _easy handle_) to configure the request. You can set options using helper methods, like `curl_easy_setopt`.
+libcurl exposes an "easy API" to perform transfers, you create a `CURL` handle (called an "easy handle") to configure the request. You can set options using helper methods, like `curl_easy_setopt`.
 
 The following is an example of making a request with a custom header:
 
@@ -248,13 +247,13 @@ curl_slist_free_all(headers);
 
 The curl tool uses the easy API internally. curl converts the command line options into an easy handle object.
 
-When curl is called from the command line, it first parses the options passed to it in `argv`. It normalizes option names, and enters a switch statement, which runs against all possible options. For the `header` option name, the option parameter value is added to a `curl_slist`.
+When curl is called from the command line, it first parses the options passed to it in `argv`. It normalizes option names, and enters a switch statement, which runs against all possible options. For any `header` options, the option parameter value is added to a `curl_slist`.
 
 Once curl has parsed the options, it creates an easy handle to pass to libcurl, before executing the operation.
 
 For HTTP requests, libcurl creates a buffer to hold the request string. The request string is built by converting options into the relevant strings. The headers are added by `Curl_add_custom_headers`.
 
-`Curl_add_custom_headers` loops over the headers list. For each header, the header is validated (by checking for a colon), and then added to the header buffer along with with a CRLF (`\r\n`).
+`Curl_add_custom_headers` loops over the headers list. For each header, the header is validated (by checking for a colon), and then added to the request buffer along with with a CRLF (`\r\n`).
 
 ```c
 CURLcode Curl_add_custom_headers(
@@ -301,16 +300,14 @@ CURLcode Curl_add_custom_headers(
 
 Once all the text has been added to an HTTP request, cURL calls `send` to send the data over the TCP connection.
 
-`curl_slist` is also used for other variable-length data, like response headers and cookies.
-
-As you can see, the linked list data structure is well-suited to supporting arguments of varying lengths, like custom headers.
+As well as being used for request headers, `curl_slist` is also used for other variable-length data, like cookies and trailer headers. The linked list data structure is well-suited to representing objects of varying lengths.
 
 ## Problems with linked lists
 
-Although linked lists work well for representing variable data, they can cause performance problems in time-critical apps due to poor cache locality.
+Although linked lists work well for representing variable data, they can cause performance problems in time-critical apps due to poor [cache locality](https://en.wikipedia.org/wiki/Locality_of_reference).
 
-For example, when DOOM 3 was rewritten to run at 60fps, the developers identified the use of linked lists as a major performance issue (see [the DOOM 3 technical note](http://fabiensanglard.net/doom3_documentation/DOOM-3-BFG-Technical-Note.pdf) for details).
+For example, when DOOM 3 was rewritten to run at 60FPS, the developers identified the use of linked lists as a major performance issue (see [the DOOM 3 technical note](http://fabiensanglard.net/doom3_documentation/DOOM-3-BFG-Technical-Note.pdf) for details).
 
-Despite possible performance issues, linked lists are a common data structure in C programs. They are handy for representing variable length data, and they're relatively easy to implement.
+Despite performance issues, linked lists are a common data structure in C programs. They are good at representing variable length data, and they're easy to implement.
 
 The next blog post will look at a variation of linked lists—intrusive linked lists—and how they are used in Linux.
