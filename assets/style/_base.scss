@@ -86,9 +86,59 @@ img {
   max-width: 100%;
 }
 
+figure {
+  margin: 0;
+}
+
 blockquote {
   margin: 0 0 0 -1.5rem;
   padding: 0 0 0 1.3125rem;
   font-style: italic;
   border-left: 0.1875rem solid $body-color;
+}
+
+code {
+  margin-left: 4px;
+  margin-right: 4px;
+  padding: 4px 6px;
+  font-family: Menlo, Monaco, "Courier New", Courier, monospace;
+  font-size: 0.8em;
+  white-space: pre-wrap;
+  background: #f7f7f8;
+  border-radius: 2px;
+}
+
+pre code {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  white-space: inherit;
+}
+
+.highlight table,
+.highlight pre {
+  margin-bottom: 0;
+}
+.highlight code {
+  background: transparent;
+}
+.highlight table {
+  width: auto;
+}
+.highlight table td {
+  padding: 0;
+  border-bottom: 0;
+}
+.highlight table td:first-child pre code {
+  padding-right: 16px;
+  color: var(--tertiary);
+  text-align: right;
+}
+.highlight table td:last-child pre code {
+  padding-left: 0;
+  overflow: hidden;
+}
+.highlight .ln {
+  margin-right: 16px;
+  color: var(--tertiary);
 }

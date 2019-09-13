@@ -144,7 +144,9 @@ Because C arrays are static and can't grow in size, they can be difficult to wor
 
 Ruby is an interpreted language. Instead of being compiled to machine code, Ruby programs are run by another program known as an interpreter. There are many different Ruby interpreters, but I'll show you how Ruby arrays are implemented in the original Ruby interpreter written in C (CRuby).
 
+<!-- prettier-ignore-start -->
 _Note: The code examples are from CRuby v1\_0, which uses legacy C syntax. The current CRuby array implementation contains optimizations that make it more difficult to explain, but it works in a similar way._
+<!-- prettier-ignore-end -->
 
 Unlike C arrays, Ruby arrays are implemented as a class with methods for operating on the array. For example the `push` method, which adds new elements to an array:
 

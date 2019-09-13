@@ -2,9 +2,7 @@ title = "Data structures in practice"
 baseURL = "https://www.data-structures-in-practice.com/"
 languageCode = "en-us"
 
-pygmentsCodefences = true
-PygmentsStyle = "monokai"
-background_color = "#f8f8f2"
+pygmentsCodeFences=true
 
 disqusShortname = "data-structures-in-practice"
 googleAnalytics = "UA-74647525-2"
