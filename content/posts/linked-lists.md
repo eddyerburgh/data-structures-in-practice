@@ -11,7 +11,7 @@ A linked list is a collection of data connected via references.
 
 {{< figure src="/images/linked-lists/singly-linked-list.svg" title="Figure 1: A linked list" >}}
 
-Each element (or **node**) in the list contains a value and a reference to the next node.
+Each element (or **node**) in a list contains a value and a reference to the next node.
 
 The simplest linked list is a **singly linked list**, where each node points to the next node in the list. In a singly linked list, the final node points to a null value.
 
@@ -45,7 +45,7 @@ list* find(list* head, DATA data) {
 
 An algorithm to find a list node may need to traverse an entire list in the worst case. This makes linked list search an O(n) operation.
 
-In contrast, linked list insertion takes constant time. An `insert` method can insert a new node by creating a node dynamically and changing the pointers of existing nodes.
+In contrast, linked list insertion takes constant time (provided you have a reference to the node you want to insert at). An `insert` method can insert a new node by creating a node dynamically and changing the pointers of existing nodes.
 
 The following code creates a new node and adds it to the end of a list:
 
@@ -56,6 +56,8 @@ void insert(DATA data, list* tail) {
   tail = node;
 }
 ```
+
+_Note: A linked list node is often dynamically allocated using a function like `malloc`. This adds overhead for each node that's created._
 
 Now you know what a linked list is, the next question is _why use them_?
 
@@ -82,7 +84,9 @@ You can see the cost of the common operations in the following table:
 
 The final benefit is that they're easy to implement (which means less surface area for bugs).
 
-The rest of this post will dive into the details of how linked lists are implemented and used in the cURL project.
+Despite these benefits, dynamic arrays are often more performant than linked lists. Think carefully before you decide to use linked lists in your project.
+
+The rest of this post will look at a project that's used linked lists successfully—cURL.
 
 ## Linked lists in cURL
 
@@ -94,7 +98,7 @@ Commonly, the curl tool is used to make HTTP requests to a server:
 curl http://www.google.com
 ```
 
-An HTTP/1.1 request can include a variable number of **headers** in the form `field-name ":" [ field-value ]`.
+HTTP requests can include a variable number of **headers** in the form `field-name ":" [ field-value ]`.
 
 You can add headers with the curl `--header` option:
 
@@ -134,13 +138,9 @@ struct curl_slist *curl_slist_append(struct curl_slist *list,
                                      const char *data)
 {
   char *dupdata = strdup(data);
-
   // ..
-
   list = Curl_slist_append_nodup(list, dupdata);
-
   // ..
-
   return list;
 }
 ```
@@ -156,13 +156,9 @@ struct curl_slist *Curl_slist_append_nodup(struct curl_slist *list, char *data)
 {
   struct curl_slist     *last;
   struct curl_slist     *new_item;
-
   // ..
-
   new_item = malloc(sizeof(struct curl_slist));
-
   // ..
-
   new_item->next = NULL;
   new_item->data = data;
 
@@ -182,9 +178,7 @@ struct curl_slist *Curl_slist_append_nodup(struct curl_slist *list, char *data)
 static struct curl_slist *slist_get_last(struct curl_slist *list)
 {
   struct curl_slist     *item;
-
   // ..
-
   item = list;
   while(item->next) {
     item = item->next;
@@ -199,7 +193,7 @@ Before that, a quick primer on HTTP/1.1.
 
 ### HTTP/1.1
 
-HTTP/1.1 is an application protocol for sending data between a client and a server. It was created with ease-of-use in mind.
+HTTP/1.1 is an application-layer protocol for sending data between a client and a server. It was created with ease-of-use in mind.
 
 HTTP/1.1 is ASCII-encoded, so it's human readable. A request contains a **request-line** (in the form `Method Request-URI HTTP-Version CRLF`), and a variable-length list of **headers**.
 
@@ -245,7 +239,7 @@ res = curl_easy_perform(curl); // make the request
 curl_slist_free_all(headers);
 ```
 
-The curl tool uses the easy API internally. curl converts the command line options into an easy handle object.
+curl tool uses the libcurl easy API internally. curl converts the command line options into an easy handle object.
 
 When curl is called from the command line, it first parses the options passed to it in `argv`. It normalizes option names, and enters a switch statement, which runs against all possible options. For any `header` options, the option parameter value is added to a `curl_slist`.
 
@@ -275,12 +269,9 @@ CURLcode Curl_add_custom_headers(
       // ..
       if(ptr) {
         // ..
-
         if(*ptr /* .. */ ) {
           // ..
           char *compare = /* ... */ headers->data;
-
-
           // ..
             result = Curl_add_bufferf(
               &req_buffer,
@@ -308,6 +299,6 @@ Although linked lists work well for representing variable data, they can cause p
 
 For example, when DOOM 3 was rewritten to run at 60FPS, the developers identified the use of linked lists as a major performance issue (see [the DOOM 3 technical note](http://fabiensanglard.net/doom3_documentation/DOOM-3-BFG-Technical-Note.pdf) for details).
 
-Despite performance issues, linked lists are a common data structure in C programs. They are good at representing variable length data, and they're easy to implement.
+Despite potential performance performance issues, linked lists are a common data structure in C programs. They are good at representing variable-length data and they are simple to implement (which goes a long way in C!).
 
 The next blog post will look at a variation of linked lists—intrusive linked lists—and how they are used in Linux.
