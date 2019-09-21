@@ -1,9 +1,9 @@
 ---
 title: "Intrusive linked lists"
-date: 2019-09-13T12:29:04+01:00
+date: 2019-09-21
 ---
 
-This post will teach you what intrusive linked lists are, and how they're used in Linux to manage processes.<!--more-->
+This post will teach you what intrusive linked lists are and how they're used in Linux to manage processes.<!--more-->
 
 ## What are intrusive linked lists?
 
@@ -13,11 +13,11 @@ In a typical linked list implementation, a list node contains a `data` pointer t
 
 {{< figure src="/images/intrusive-linked-lists/linked-list-pointers.svg" title="Figure 1: A linked list" >}}
 
-An intrusive list still contains a `next` pointer to the next list node, but there's no `data` pointer because the list is part of the linked data structure itself.
+An intrusive list contains a `next` pointer to the next list node, but no `data` pointer because the list is part of the linked data structure itself.
 
 {{< figure src="/images/intrusive-linked-lists/intrusive-linked-list-pointers.svg" title="Figure 2: An intrusive linked list" >}}
 
-So a `list` structure for an intrusive singly linked list only contains a `next` pointer to another list node:
+A `list` structure for an intrusive singly linked list contains a single `next` pointer to another list node:
 
 ```c
 typedef struct list {
@@ -43,13 +43,15 @@ item* i2 = create_item(18);
 i1->items.next = &i2->items;
 ```
 
-You can access the object that contains a list node by first getting the address of the list object (e.g. the value of `i1.items.next`). You then subtract the offset of the list member from the address of the list object. The **offset** is the number of bytes a member is positioned from the beginning of its containing object.
+You can access the object that contains a list node by first getting the address of the list object (e.g. the value of `i1.items.next`). You then subtract the offset of the list member from the address of the list object.
+
+The **offset** is the number of bytes a member is positioned from the beginning of its containing object.
 
 {{< figure src="/images/intrusive-linked-lists/intrusive-list-memory-address.svg" title="Figure 3: The address of an object with an embedded list" >}}
 
-Consider a `list` object inside an object `i2` at memory address 0x18. The `list` member is offset 8 bytes from the beginning of the `item` data structure. Therefore, the beginning address of the `i2` object is 0x18 - 0x08 (0x10).
+Consider a `list` object in an object `i2` at memory address 0x18. The `list` member is offset 8 bytes from the beginning of the `item` data structure. Therefore, the beginning address of the `i2` object is 0x18 - 0x08 (0x10).
 
-In C compiled by GCC, you can subtract bytes from a pointer   by casting the pointer variable to a void pointer, which has a size of 1 byte when compiled with GCC. You can then subtract a number from the pointer value:
+In GCC-compiled C, you can subtract bytes from a pointer by casting the pointer variable to a void pointer (which has a size of 1 byte when compiled with GCC). You can then subtract the bytes from the pointer value without the number being scaled to `num * sizeof(structure)`:
 
 ```c
 item* _i2 = (void *)(i1->items.next) - 8;
@@ -57,13 +59,19 @@ item* _i2 = (void *)(i1->items.next) - 8;
 
 _Note: Pointer arithmetic on a void pointer is illegal in C, but is supported by GCC. Linux is compiled using GCC, and so it can perform pointer arithmetic on void pointers._
 
-Subtracting an absolute value isn't portable, because data types can be different sizes depending on the architecture. A better way is to make use of the `offsetof` macro. `offsetof` returns the offset of a member from its containing structure in bytes:
+Subtracting an absolute value isn't portable, because data types can be different sizes depending on the CPU architecture. A better way is to use the `offsetof` macro. `offsetof` returns the offset of a member from its containing structure (in bytes):
 
 ```c
 item* _s2 = (void *)(i1->items.next) - (offsetof(item, items));
 ```
 
-So that's the basics of intrusive linked lists. After all that pointer arithmetic, you're probably wondering what benefit there is to using intrusive linked lists.
+To summarize:
+
+* The list node is embedded in a containing object.
+* The list node points to a list node embedded in another linked object.
+* The base address of the linked object is calculated by subtracting the offset of the list member from the memory address of the list object embedded in the linked object.
+
+After all that pointer arithmetic, you're probably wondering what benefit there is to using intrusive linked lists.
 
 ## Why use intrusive linked lists?
 
@@ -72,15 +80,17 @@ There are two main reasons to use intrusive lists over non-intrusive linked list
 * Fewer memory allocations.
 * Less cache thrashing.
 
-With non-intrusive linked lists, you must allocate memory for a list node each time you add a new object to a list. With intrusive linked lists, you don't. This means there are fewer error cases to handle when using intrusive lists.
+With non-intrusive linked lists, creating a new object and adding it to a list requires two memory allocations: one for the object, and one for the list node. With intrusive linked lists, you only need to allocate one object (since the list node is embedded in the object). This means fewer errors to be handled, because there are half as many cases where memory allocation can fail.
 
 Intrusive linked lists also suffer less from cache thrashing. Iterating through a non-intrusive list node requires dereferencing a list node, and then dereferencing the list data. Intrusive linked lists only require dereferencing the next list node.
 
+Before looking at how processes are managed using linked lists in Linux, you need to understand doubly and circular linked lists.
+
 ## Doubly and circular linked lists
 
-Doubly linked lists and circular linked lists are variations of singular linked lists. Linux uses circular doubly linked lists, so this section will cover what they both are before diving into the Linux implementation.
+Doubly linked lists and circular linked lists are variations of singly linked lists. Linux uses circular doubly linked lists, so this section will cover both variations.
 
-A **doubly linked list** is linked list that keeps pointers to both the next node and the previous node.
+A **doubly linked list** is a linked list that keeps pointers to both the next node and the previous node.
 
 {{< figure src="/images/intrusive-linked-lists/doubly-linked-list.svg" title="Figure 4: A doubly linked list" >}}
 
@@ -122,13 +132,17 @@ void list_print_each(list* node) {
   do {
     printf("%d,", node->val);
     node = node->next;
-  } while(node != start);
+  } while (node != start);
 }
 ```
 
 ## Linked lists in Linux
 
 Linux uses linked lists extensively. They are used for all kinds of tasks, from keeping track of free memory slabs, to iterating through each running process. A search for the `struct list_head` structure returns over 10,000 results in Linux 5.2.
+
+In Linux, list nodes are added and removed a lot more than they are traversed. An analysis of Linux during normal usage found that traversals were only 6% of total linked list operations. Of those, 28% of traversals either occurred on empty lists, or only visited one node before breaking off (see Rusty Russel's [analysis of linked lists](http://rusty.ozlabs.org/?p=168) for more info).
+
+As Rusty's analysis suggests, Linux mainly uses linked lists to keep lists of objects when either traversal is infrequent, or when the list size is small.
 
 Linux includes a few different list structures. The most popular is an intrusive circular doubly linked list.
 
@@ -144,6 +158,8 @@ struct list_head {
 };
 ```
 
+The reason for the `list_head` name is that with this implementation any list node can act as a head node (since the entire list can be traversed from any node in the list).
+
 You create a linked list of objects by embedding `list_head` as a member on the struct that will be made into a list:
 
 ```c
@@ -153,7 +169,7 @@ struct atmel_sha_drv {
 };
 ```
 
-A new list can either be statically or dynamically initialized.
+A new list can be either statically or dynamically initialized.
 
 A statically allocated list can use the `LIST_HEAD_INIT` macro:
 
@@ -170,7 +186,15 @@ static struct atmel_sha_drv atmel_sha = {
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
 ```
 
-To initiate a linked list dynamically, you use the `INIT_LIST_HEAD` macro. `INIT_LIST_HEAD` is called with a pointer to a `list` node. Again, the list's `next` and `prev` pointers are set to point to itself:
+To initiate a list dynamically, you can use the `INIT_LIST_HEAD` macro. Often a separate `list_head` is kept as a head node:
+
+```c
+static struct list_head hole_cache;
+
+IINIT_LIST_HEAD(&hole_cache);
+```
+
+`INIT_LIST_HEAD` is called with a pointer to a `list` node. Again, the list's `next` and `prev` pointers are set to point to itself:
 
 ```c
 static inline void INIT_LIST_HEAD(struct list_head *list)
@@ -182,7 +206,24 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
 
 _Note: the `WRITE_ONCE` macro prevents unwanted compiler optimizations when assigning a value._
 
-After a list has been initialized, new items can be added with `list_add`. `list_add` accepts a head node pointer, and a pointer to the node that should be inserted. It then calls the internal `__list_add` function to insert the new node between the `head` node, and `head->next`:
+
+After a list has been initialized, new items can be added with `list_add`:
+
+```c
+struct hole {
+  // ..
+	struct list_head list;
+};
+
+static struct hole initholes[64];
+
+// ..
+
+for(i = 0; i < 64; i++)
+  list_add(&(initholes[i].list), &hole_cache);
+```
+
+`list_add` accepts a head node pointer, and a pointer to the node that should be inserted. It then calls the internal `__list_add` function to insert the new node between the `head` node, and `head->next`:
 
 ```c
 static inline void list_add(struct list_head *new, struct list_head *head)
@@ -207,7 +248,13 @@ static inline void __list_add(struct list_head *new,
 }
 ```
 
-Linux also provides a `list_entry` macro to access the containing data structure of a list node.
+Linux provides a `list_entry` macro to access the containing data structure of a list node:
+
+```c
+struct hole *ret;
+
+ret = list_entry(hole_cache.next, struct hole, list);
+```
 
 `list_entry` expands to a `container_of` macro:
 
@@ -228,11 +275,11 @@ That's the basic implementation of intrusive lists in Linux.
 
 ### Tracking processes
 
-In Posix, a process is an executing instance of a program. One of the kernel's key responsibilities is to create processes and schedule them so that each process runs for an appropriate amount of time.
+In POSIX, a process is an executing instance of a program. One of the kernel's key responsibilities is to create processes and schedule them so that each process runs for an appropriate amount of time.
 
-Internally, Linux refers to processes as **tasks**. A task is represented with a `task_struct` structure.
+Internally, Linux refers to processes as **tasks**. As tasks are created, they are added to a **task list**. This list can be used when Linux needs to iterate over every single task, for example when sending a signal to each process.
 
-A `task_struct` includes a `list_head` member named `tasks` which is a list of all existing tasks (known as the task list):
+Linux represents tasks as a `tast_struct`. A `task_struct` includes a `list_head` member named `tasks` to link between tasks:
 
 ```c
 struct task_struct {
@@ -281,9 +328,9 @@ struct task_struct *copy_process(
 }
 ```
 
-`list_add_tail_rcu` is a variation of the `list_add` function from earlier. It uses RCU, which is a mechanism for ensuring concurrent reads (no need to go into the details). `list_add_tail_rcu` has the effect of adding the newly created task's task list node to the tail of the `init_task` task list.
+`list_add_tail_rcu` is a variation of the `list_add` function from earlier. It uses RCU, which is a synchronization mechanism that supports concurrency between a single writer and multiple readers (no need to go into the details). `list_add_tail_rcu` has the effect of adding the newly created task's `tasks` node to the tail of the `init_task` task list.
 
-The task list is mainly used when the Kernel needs to perform an action on each task. For example, freezing tasks when a computer is going into hibernate mode, swapping tasks to an updated version of the kernel during a live patch, or when a signal is sent to each process.
+As mentioned, the task list is mainly used when the Kernel needs to perform an action on each task. For example, freezing tasks when a computer is going into hibernate mode, swapping tasks to an updated version of the kernel during a live patch, or when a signal is sent to each process. Most of these uses are rare, and so the efficiency of iterating over each item in a list isn't a major concern.
 
 One of the times a signal is sent to each process is when the SysRq key and e are pressed together, which terminates all processes.
 
@@ -309,7 +356,7 @@ static void send_sig_all(int sig)
 }
 ```
 
-At this point it's macros all the way down.  The `for_each_process` macro expands into a `for` loop that loops over each item in the list by changing the reference of `p` to the next task, using the `next_task` macro, starting at `init_task`:
+At this point it's macros all the way down.  The `for_each_process` macro expands into a `for` loop that loops over each item in the list by changing the value of `p`. Starting at `init_task`, it uses the `next_task` macro to reach the next task in the list:
 
 ```plain
 #define for_each_process(p) \
@@ -329,6 +376,6 @@ It's worth noting that the `tasks` linked list isn't the only way Linux keeps re
 
 ## Conclusion
 
-Intrusive linked lists are an interesting approach to improving the performance of linked lists by reducing cache thrashing and memory allocation.
+Intrusive linked lists are an interesting alternative to linked lists that reduce cache thrashing and memory allocations.
 
 Intrusive linked lists are used extensively by Linux, and you should understand them if you plan to do any kernel hacking.
