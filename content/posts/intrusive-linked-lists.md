@@ -1,6 +1,6 @@
 ---
 title: "Intrusive linked lists"
-date: 2019-09-21
+date: 2019-09-23
 ---
 
 This post will teach you what intrusive linked lists are and how they are used to manage processes in Linux.<!--more-->
