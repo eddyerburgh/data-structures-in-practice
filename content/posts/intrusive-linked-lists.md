@@ -141,7 +141,7 @@ The list structure is named `list_head`. It contains a `next` and `prev` pointer
 
 ```c
 struct list_head {
-	struct list_head *next, *prev;
+  struct list_head *next, *prev;
 };
 ```
 
@@ -149,8 +149,8 @@ You create a linked list of objects by embedding `list_head` as a member on the 
 
 ```c
 struct atmel_sha_drv {
-    struct list_head head;
-    // ..
+  struct list_head head;
+  // ..
 };
 ```
 
@@ -160,8 +160,8 @@ A statically initialized list can use the `LIST_HEAD_INIT` macro:
 
 ```c
 static struct atmel_sha_drv atmel_sha = {
-	.dev_list = LIST_HEAD_INIT(atmel_sha.dev_list),
-	// ..
+  .dev_list = LIST_HEAD_INIT(atmel_sha.dev_list),
+  // ..
 };
 ```
 
@@ -184,8 +184,8 @@ IINIT_LIST_HEAD(&hole_cache);
 ```c
 static inline void INIT_LIST_HEAD(struct list_head *list)
 {
-	WRITE_ONCE(list->next, list);
-	list->prev = list;
+  WRITE_ONCE(list->next, list);
+  list->prev = list;
 }
 ```
 
@@ -197,7 +197,7 @@ After a list has been initialized, new items can be added with `list_add`:
 ```c
 struct hole {
   // ..
-	struct list_head list;
+  struct list_head list;
 };
 
 static struct hole initholes[64];
@@ -213,7 +213,7 @@ for(i = 0; i < 64; i++)
 ```c
 static inline void list_add(struct list_head *new, struct list_head *head)
 {
-	__list_add(new, head, head->next);
+  __list_add(new, head, head->next);
 }
 ```
 
@@ -224,12 +224,12 @@ static inline void __list_add(struct list_head *new,
 			      struct list_head *prev,
 			      struct list_head *next)
 {
-	// ..
+  // ..
 
-	next->prev = new;
-	new->next = next;
-	new->prev = prev;
-	WRITE_ONCE(prev->next, new);
+  next->prev = new;
+  new->next = next;
+  new->prev = prev;
+  WRITE_ONCE(prev->next, new);
 }
 ```
 
@@ -245,15 +245,15 @@ This uses the `offsetof` trick from earlier in this post. `list_entry` expands t
 
 ```plain
 #define list_entry(ptr, type, member) \
-	container_of(ptr, type, member)
+  container_of(ptr, type, member)
 ```
 
 The `container_of` macro calculates the containing object's address by subtracting the offset of the list node from the address of the `list_head` object:
 
 ```plain
 #define container_of(ptr, type, member) ({				\
-	void *__mptr = (void *)(ptr);					\
-	((type *)(__mptr - offsetof(type, member))); })
+  void *__mptr = (void *)(ptr);					\
+  ((type *)(__mptr - offsetof(type, member))); })
 ```
 
 That's the basic implementation of intrusive linked lists in Linux.
@@ -281,7 +281,7 @@ The initial task is statically allocated as `init_task`, and the `tasks` field i
 ```c
 struct task_struct init_task = {
   // ..
-	.tasks		= LIST_HEAD_INIT(init_task.tasks),
+  .tasks		= LIST_HEAD_INIT(init_task.tasks),
 };
 ```
 
@@ -326,18 +326,20 @@ The kernel registers a handler function that's called when the SysReq + e keys a
 ```c
 static void send_sig_all(int sig)
 {
-	struct task_struct *p;
+  struct task_struct *p;
 
-	// ..
-	for_each_process(p) {
-		if (p->flags & PF_KTHREAD)
-			continue;
-		if (is_global_init(p))
-			continue;
+  // ..
 
-		do_send_sig_info(sig, SEND_SIG_PRIV, p, PIDTYPE_MAX);
-	}
-	// ..
+  for_each_process(p) {
+    if (p->flags & PF_KTHREAD)
+      continue;
+    if (is_global_init(p))
+      continue;
+
+    do_send_sig_info(sig, SEND_SIG_PRIV, p, PIDTYPE_MAX);
+  }
+
+  // ..
 }
 ```
 
