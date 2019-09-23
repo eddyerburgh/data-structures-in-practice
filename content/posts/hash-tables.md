@@ -3,11 +3,11 @@ title: "Hash tables"
 date: 2019-09-12T12:28:04+01:00
 ---
 
-In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in CPython.<!--more-->
+In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the Python interpreter (CPython).<!--more-->
 
 ## What are hash tables?
 
-Hash tables are a data structure used for storing (key,value) pairs.
+Hash tables are a data structure used for storing key/value pairs.
 
 A simple hash table stores items in an array. It calculates the index of an item using a **hashing function**.
 
@@ -18,27 +18,40 @@ hash = hash_function(key)
 index = hash % array_size
 ```
 
-The main hash table operations area `set_item`, `get_item`, and `delet_item`.
+The main hash table operations are:
 
+* `set_item(key, val)`
+* `get_item(key)`
+* `delete_item(key)`
 
 It's possible that a key maps to the same index as another key. This is known as a **collision**. A big part of a hash table is collision resolution.
 
-There are several collision resolution approaches. The most common techniques are:
+There are several approaches to collision resolution. The two most commons are:
 
 1. Chaining.
 2. Open addressing.
 
-Chaining is where each item in the hash table array is a linked list. When an item is added to the index, it's added as a node on the list. This approach can cause problems where one linked list grows very large, leading to O(n) access. To solve this, hash tables that implement chaining add logic to make sure no one linked list grows too large. If it does, the table is dynmically resized, and the indexes are recomputed—leading to a more balanced table.
+**Chaining** is where each item in the hash table array is a linked list. When an item is added to the index, it's added as a node on the list.
 
-Open addressing is an alternative. In the case of a collision, elements in the array are checked in a deterministic sequence, until a free slot is found(this is known as **probing**). The sequence that determines probing is slightly complex. I'll cover it in detail in the next section.
+<!-- TODO: Add diagram of chaining -->
 
-Open addressing implementations are often more performant due to better cache locality. Many projects that implement hash tables have moved from chaining to open addressing, such as PHP, Python, and Ruby. But chaining is still used in popular languages (e.g. Go, [GCC C++ stdlib](https://github.com/gcc-mirror/gcc/blob/gcc_5_3_0_release/libstdc++-v3/include/bits/hashtable.h)).
+This approach can cause problems where one linked list grows very large, leading to O(n) access. To solve this, hash tables that implement chaining often add logic to make sure no one linked list grows too large. If it does, the table is dynamically resized, and the indexes are recomputed—leading to a more balanced table.
+
+**Open addressing** is an alternative. In the case of a collision, elements in the array are checked in a deterministic sequence, until a free slot is found(this checking is known as **probing**).
+
+<!-- TODO: Add diagram of open addressing -->
+
+For efficient implementations, the sequence that determines probing is complex. I'll cover it in detail later in this post.
+
+Open addressing implementations are often more performant due to better cache locality. Many projects that implement hash tables have moved from chaining to open addressing due to improved performance of open addressing (e.g. PHP, Python, and Ruby). That said, chaining is still used in popular languages (e.g. Go and the [GCC C++ stdlib](https://github.com/gcc-mirror/gcc/blob/gcc_5_3_0_release/libstdc++-v3/include/bits/hashtable.h)).
+
+So what's the benefit of hash tables?
 
 ## Why use hash tables?
 
 Hash tables are powerful. In the average case and in practice they give O(1) access to key value pairs.
 
-The worst case is generally O(n), but the average case is O(1):
+The worst case is generally O(n), but the average (and often seen) case is O(1):
 
 | Operation | Average case | Worst case |
 | --------- | ---------- | ---------- |
@@ -50,11 +63,15 @@ In practice:
 
 The downside of hash tables is that they consume more memory than a simple list or array.
 
+Using amortized analysis, hash tables are often O(1) for search, insertion, and deletion (find source). This makes them incredibly useful, and they're the basis for many other data structures (e.g. sets, maps).
+
+Although hash tables sound simple in theory, there are lots of nuances to implementing them. The next section looks at how hash tables are implemented in Python to implement dictionaries.
+
 ## Hash tables in Python
 
-Python is an interpreted programming language. It's defined in the [Python reference](https://docs.python.org/3/reference/index.html), and developers create their own implementations to run python.
+Python is an interpreted programming language. It's defined in the [Python reference](https://docs.python.org/3/reference/index.html), and the reference implementation is CPython.
 
-The reference Python implementation is CPython. CPython is written in C and works like most interpreted languages: it parses code into an AST, compiles it into byte code, and runs it on a virtual (stack-based) machine.
+CPython is written in C and works like most interpreted languages: it parses code into an AST, compiles the AST into byte code, and runs it on a virtual (stack-based) machine.
 
 One useful Python data structure is a dictionary. Dictionaries work like hash tables, you can set and access values by a key.
 
@@ -68,7 +85,7 @@ tel = {
 }
 ```
 
-And you access items from a dictionary like so:
+You access items from a dictionary like so:
 
 ```python
 print tel['alice'] ## 2025550143
@@ -76,7 +93,7 @@ print tel['alice'] ## 2025550143
 
 Python implements dictionaries using hash tables.
 
-The rest of this blog post I'll show you how Python uses a hash table to implement the following code:
+In the rest of this post I'll show you how Python uses a hash table to implement the following code:
 
 ```python
 d = {}
@@ -93,11 +110,13 @@ There are three parts to CPython hash tables:
 2. Handling collisions
 3. Resizing the table
 
-Python dictionary hash tables use an array to store items. It uses open addressing for conflict resolution.
+Python dictionary hash tables use an array to store items and open addressing for conflict resolution.
 
-Python optimizes hash tables into contained hash tables and split tables. For simplicity, I'll focus on the contained tables.
+Python optimizes hash tables into combined hash tables and split tables. For simplicity, I'll focus on the combined tables.
 
-A combined hash table has three kinds of slots:
+In a combined table, the hash table has two arrays: one is the entries array, this doesn't change as the table is resized. The other is the array that acts as the hash table, this contains nodes that give the index of the entry in the entries array.
+
+A combined hash table has three kinds of slots in the hash table:
 
 1. Unused. This doesn't hold a key value pair now and never has.
 2. Active. Holds an active key value pair.
@@ -107,15 +126,19 @@ A Python array contains less items than it can hold. This is to avoid collisions
 
 ### Generating an index
 
-A hash function needs to generate an index from a given key.
+The index for the hash array is generated using by calling a hash function with a given key.
 
-A hash function is a one-way function. It always produces the same output for a given input, but it's not possible to convert the output back to the input. The only way to determine the original input is through trial and error.
+A hash function is a one-way function. It should always produce the same output (called a **digest**) for a given input, but given the hash function, it should be impossible to convert the output back to the input without trial and error.
 
-Different data types can be used as a key in Python. Each data type has its own hashing algorithm. For example, string uses one, and int32 (??) uses another. Commonly in Python the key is a unicode string. By default, Python uses the SipHash algorithm for unicode strings.
+Python supports different data types as keys for a dictionary. Each data type has its own hashing algorithm. For example, string uses one hash function, and int uses another. Commonly in Python the key is a string. By default, Python uses the SipHash algorithm for strings.
 
-SipHash is a relatively fast, cryptographic hash function. Cryptographic means that it meets certain criteria, for more information check out ....
+**SipHash** is a relatively fast, cryptographic hash function. Cryptographic means that the function is suitable for use in cryptography, for more information check out the [cryptographic hash function wikipedia page](https://en.wikipedia.org/wiki/Cryptographic_hash_function).
 
-On a 64-bit machine, the SipHash returns a 64-bit unsigned number (`size_t` (CHECK)). It needs to be converted into an index to be used in an array. This is done by creating a bit mask rather than a modulo. The reason is that modulo is an expensive operation on most processors. Reminder that a bit mask is bits that are set to 1. For example:
+On a 64-bit machine, the SipHash returns a 64-bit word digest (??). The hash is then converted into an index to be used in an array.
+
+Traditionally, a digest is converted into an index using the modulo. For example, if the hash array has 40 positions, the index can be calculated with `digest % 40`. The problem is that modulo operator performs division, and division is a slow operation on most CPUs. Normally this isn't an issue, but in cases where modulo is called often, it can be (Find any benchamarking in python?).
+
+The alternative is to use a bitmask, instead of a modulo. A bitmask is a series of bits that can be logically ANDed with another value to create a new value. For example:
 
 ```plain
 00100110
@@ -124,7 +147,7 @@ On a 64-bit machine, the SipHash returns a 64-bit unsigned number (`size_t` (CHE
 00000110 Result
 ```
 
-The bit mask works by setting the size of the array to be a power of 2. Any number that is a power of 2 is a single bit:
+In order for the bitmask to work, the size of the array must be a power of 2. Any number that is a power of 2 has a single 1 bit:
 
 ```plain
 2   0010
@@ -133,7 +156,7 @@ The bit mask works by setting the size of the array to be a power of 2. Any numb
 16 10000
 ```
 
-This can easily be converted into a bit mask by subtracting 1 from the numbers:
+This can easily be converted into a bit mask by subtracting 1 from the integer:
 
 ```plain
 1  0001
@@ -151,12 +174,12 @@ By applying the bitmask to a larger value. As an example, consider 16-bit int. Y
 0000 0000 0001 1001
 ```
 
-This is how Python converts an. It's important for the array size to be a power of two, because then you can get a bit mask by simply subtracting 1 from the total number of the map:
+This is how Python converts a digest to an array index (where `DK_SIZE` macro gets the size of a dictionary):
 
 ```c
 size_t mask = (size_t)DK_SIZE(keys) - 1;
 
-Py_hash_t hash = ep->me_hash;
+// ..
 size_t i = hash & mask;
 ```
 
@@ -166,7 +189,7 @@ So that's how Python generates the initial index `i`. If the element at index `i
 
 Conflict resolution occurs when an element already exists at the index generated by the hash table. Python uses open addressing to resolve conflicts.
 
-Collision resolution is important, because the Python hash function can compute similar hashes in certain cases (e.g. for large integers).
+<!-- In Python, collision resolution is especially important because the Python hash functions often produce conflicts. This is especially true for for large integer keys. -->
 
 The simplest implementation of open addressing is to linearly search through the array in case of a conflict. This is known as a **linear probing sequence**:
 
@@ -178,10 +201,9 @@ while(1) {
 }
 ```
 
-First part of collision detection is to visit table indices using this recurrence: `j = ((5*j) + 1) mod 2**i`
+This can be a problem in CPython, where many keys often map to the same index. In the case of many collisions on the same integer, linear probing would result in clustering, where there are large areas that are taken. The linear probe would need to go through many iterations until it found a match.
 
-
-Linear probing sequence works great for hash table implementations that have a good hashing algorithm that gives evenly distributed results. The Python hashing algorithm however, is not so good. It causes conflicts. A linear approach could often lead to large sections covered in. One solution would be to improve the hashing algorithm, but the Python devs instead chose a different probing sequence.
+Linear probing sequence works great for hash table implementations that have a hashing algorithm which gives evenly distributed results. The Python hashing algorithm however, is not so good. Conflicts are common. A linear approach could often lead to large sections covered in. One solution would be to improve the hashing algorithm, but the Python devs instead chose a different probing sequence.
 
 Has a perturb value (initially the hash). Perturb is shifted down 5 bits each iteration. Eventually perturb becomes 0, meaning i*5 + 1 is used. This is fine because it produces every int in range 0-2^n.
 
@@ -193,6 +215,7 @@ Has a perturb value (initially the hash). Perturb is shifted down 5 bits each it
 perturb >>= PERTURB_SHIFT;
 i = mask & (i*5 + perturb + 1);
 ```
+<!-- First part of collision detection is to visit table indices using this recurrence: `j = ((5*j) + 1) mod 2**i` -->
 
 
 _Perturbing_ in this context means adding a small shift to a value. That's why the value is called `peturb`. It means that all of the 64-bit hash randomness is used, even though the initially used value is normally much less.
@@ -202,7 +225,6 @@ After a while the peturb create 0. Once that happens, it is `j = ((5*j) + 1) mod
 Also, when elements are deleted they are not removed from the array. This is so that later searches will continue to be able to find (CHECK)
 
 The final part of the hash table to discuss is resizing. Once array is 2/3 full, resized.
-
 
 ### Resizing the table
 
@@ -214,6 +236,10 @@ In order to handle this, Python resizes maps as new items are added to them. The
 2. Resize once 2/3 of space is reached
 
 Python only allows 2/3 of an array to be filled with items. This is to keep the hash table array sparse and therefore to reduce collisions.
+
+The array is resized once the space is reached. Resizing involves:
+
+Growth rate is: 
 
 ###  Representing dictionaries
 
