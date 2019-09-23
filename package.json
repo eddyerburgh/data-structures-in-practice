@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "format": "prettier --write '**/*.{scss,md,yaml}'",
-    "serve": "hugo serve -D"
+    "dev": "hugo serve -D"
   },
   "devDependencies": {
     "prettier": "^1.17.1"
