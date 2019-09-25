@@ -7,7 +7,7 @@ This post will teach you what intrusive linked lists are and how they are used t
 
 ## What are intrusive linked lists?
 
-Intrusive linked lists are a variation of [linked lists]({{< ref "/linked-lists" >}}) where the links are embedded into the structure that's being linked.
+Intrusive linked lists are a variation of [linked lists]({{< ref "/linked-lists" >}}) where the links are embedded in the structure that's being linked.
 
 In a typical linked list implementation, a list node contains a `data` pointer to the linked data and a `next` pointer to the next node in the list.
 
