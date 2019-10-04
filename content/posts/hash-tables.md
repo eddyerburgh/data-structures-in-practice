@@ -98,7 +98,7 @@ print(tel['alice']) # 2025550143
 
 Internally, CPython implements dictionaries with hash tables.
 
-_Note: The CPython code is from version 3.9.0 alpha 0_
+_Note: The CPython code in this post is from version 3.9.0 alpha 0_
 
 ### Hash tables in CPython
 
