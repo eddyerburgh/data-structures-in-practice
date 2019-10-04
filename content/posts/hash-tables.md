@@ -1,6 +1,6 @@
 ---
 title: "Hash tables"
-date: 2019-09-28
+date: 2019-10-04
 ---
 
 In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the most popular Python interpreter — CPython. <!--more-->
@@ -97,6 +97,8 @@ print(tel['alice']) # 2025550143
 ```
 
 Internally, CPython implements dictionaries with hash tables.
+
+_Note: The CPython code is from version 3.9.0 alpha 0_
 
 ### Hash tables in CPython
 
