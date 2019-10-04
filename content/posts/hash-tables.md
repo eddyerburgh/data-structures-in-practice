@@ -1,15 +1,23 @@
 ---
 title: "Hash tables"
-date: 2019-09-12T12:28:04+01:00
+date: 2019-09-28
 ---
 
-In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the Python interpreter (CPython).<!--more-->
+In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the most popular Python interpreter — CPython. <!--more-->
 
 ## What are hash tables?
 
-Hash tables are a data structure used for storing key/value pairs.
+Hash tables are an implementation of the **dictionary** abstract data type, used for storing key-value pairs.
 
-A simple hash table stores items in an array. It calculates the index of an item using a **hashing function**.
+The main dictionary operations are:
+
+- `set_item(key, val)`
+- `get_item(key)`
+- `delete_item(key)`
+
+A dictionary is a useful data type that's implemented in most languages — as objects in JavaScript, hashes in Ruby, and dictionaries in Python. Many languages implement dictionaries with hash tables.
+
+A **hash table** stores items in an array. The index for an item is calculated from the key using a **hashing function**, which generates a hash value from an input of arbitrary size.
 
 Commonly, this is done in two steps:
 
@@ -18,64 +26,61 @@ hash = hash_function(key)
 index = hash % array_size
 ```
 
-The main hash table operations are:
+It's possible that a key maps to the same index as another key. This is known as a **collision**. The process of handling a collision is known as **collision resolution**.
 
-* `set_item(key, val)`
-* `get_item(key)`
-* `delete_item(key)`
+The two most common strategies for collision resolution are chaining and open addressing.
 
-It's possible that a key maps to the same index as another key. This is known as a **collision**. A big part of a hash table is collision resolution.
+**Chaining** is where each item in the hash table array is a list. When an item is added to the array at an index, it's added to corresponding list.
 
-There are several approaches to collision resolution. The two most commons are:
+{{< figure src="/images/hash-tables/hash-table-chaining.svg" title="Figure 1: A hash table using chaining" >}}
 
-1. Chaining.
-2. Open addressing.
+**Open addressing** handles collisions by searching for an empty slot in the array by following a deterministic sequence. This checking is known as **probing**, and the sequence is known as a probing sequence. A simple probing sequence is to check each slot one after the other.
 
-**Chaining** is where each item in the hash table array is a linked list. When an item is added to the index, it's added as a node on the list.
+{{< figure src="/images/hash-tables/hash-table-open-addressing.svg" title="Figure 2: A hash table using open addressing" >}}
 
-<!-- TODO: Add diagram of chaining -->
+This post will look at hash tables in CPython which uses open addressing.
 
-This approach can cause problems where one linked list grows very large, leading to O(n) access. To solve this, hash tables that implement chaining often add logic to make sure no one linked list grows too large. If it does, the table is dynamically resized, and the indexes are recomputed—leading to a more balanced table.
-
-**Open addressing** is an alternative. In the case of a collision, elements in the array are checked in a deterministic sequence, until a free slot is found(this checking is known as **probing**).
-
-<!-- TODO: Add diagram of open addressing -->
-
-For efficient implementations, the sequence that determines probing is complex. I'll cover it in detail later in this post.
-
-Open addressing implementations are often more performant due to better cache locality. Many projects that implement hash tables have moved from chaining to open addressing due to improved performance of open addressing (e.g. PHP, Python, and Ruby). That said, chaining is still used in popular languages (e.g. Go and the [GCC C++ stdlib](https://github.com/gcc-mirror/gcc/blob/gcc_5_3_0_release/libstdc++-v3/include/bits/hashtable.h)).
-
-So what's the benefit of hash tables?
+So what are the benefit of hash tables?
 
 ## Why use hash tables?
 
-Hash tables are powerful. In the average case and in practice they give O(1) access to key value pairs.
+Commonly, dictionaries are implemented with either search trees (which will be covered in future posts), or hash tables.
 
-The worst case is generally O(n), but the average (and often seen) case is O(1):
+Hash tables are (slightly) simpler to implement than search trees and have better average-case performance.
 
-| Operation | Average case | Worst case |
-| --------- | ---------- | ---------- |
-| Search    | O(1)       | O(n)       |
-| Insertion | O(1)       | O(n)       |
-| Deletion  | O(1)       | O(n)       |
+CPython in particular uses hash tables because, compared to B-trees, hash tables give "better performance for lookup (the most common operation by far) under most circumstances, and the implementation is simpler".
 
-In practice:
+Although hash tables have better average-case performance than search trees, they have much more extreme worst-case behavior.
 
-The downside of hash tables is that they consume more memory than a simple list or array.
+The time complexity for hash table operations:
 
-Using amortized analysis, hash tables are often O(1) for search, insertion, and deletion (find source). This makes them incredibly useful, and they're the basis for many other data structures (e.g. sets, maps).
+| Operation | Average-case | Amortized Worst-case |
+| --------- | ------------ | -------------------- |
+| Search    | O(1)         | O(n)                 |
+| Insertion | O(1)         | O(n)                 |
+| Deletion  | O(1)         | O(n)                 |
 
-Although hash tables sound simple in theory, there are lots of nuances to implementing them. The next section looks at how hash tables are implemented in Python to implement dictionaries.
+The time complexity of red-black trees (a kind of search tree):
 
-## Hash tables in Python
+| Operation | Average-case | Amortized Worst-case |
+| --------- | ------------ | -------------------- |
+| Search    | O(log n)     | O(log n)             |
+| Insertion | O(log n)     | O(log n)             |
+| Deletion  | O(log n)     | O(log n)             |
 
-Python is an interpreted programming language. It's defined in the [Python reference](https://docs.python.org/3/reference/index.html), and the reference implementation is CPython.
+Because the worst-case time complexity for search tree operations is generally a consistent O(log n), search trees are often preferred in systems where large pauses for rebalancing/ reallocating introduces unacceptable latency (like the high-resolution timer code in Linux).
 
-CPython is written in C and works like most interpreted languages: it parses code into an AST, compiles the AST into byte code, and runs it on a virtual (stack-based) machine.
+Although hash tables sound simple in theory, there are many nuances to implementing them. The next section looks at how hash tables are used in CPython to implement dictionaries.
 
-One useful Python data structure is a dictionary. Dictionaries work like hash tables, you can set and access values by a key.
+## Dictionaries in Python
 
-This is how you define a dictionary in Python:
+Python is an interpreted programming language, defined in the [Python reference](https://docs.python.org/3/reference/index.html). The reference implementation (and most popular interpreter) is [CPython](https://github.com/python/cpython).
+
+CPython is written in C and behaves like most interpreted languages: it parses code into an AST, compiles the AST into byte-code, and runs the byte-code on a virtual (stack-based) machine.
+
+Python provides dictionaries as a built-in data type.
+
+You can define a dictionary in Python like so:
 
 ```python
 tel = {
@@ -85,248 +90,73 @@ tel = {
 }
 ```
 
-You access items from a dictionary like so:
+You can access items from a dictionary using the subscript (`[]`) notation:
 
 ```python
-print tel['alice'] ## 2025550143
+print(tel['alice']) # 2025550143
 ```
 
-Python implements dictionaries using hash tables.
-
-In the rest of this post I'll show you how Python uses a hash table to implement the following code:
-
-```python
-d = {}
-d['key'] = 'some value'
-```
-
-The first thing to do is to discuss hash tables at a high-level.
+Internally, CPython implements dictionaries with hash tables.
 
 ### Hash tables in CPython
 
-There are three parts to CPython hash tables:
+The CPython dictionary hash tables store items in an array and use open addressing for conflict resolution.
 
-1. Generating an index
-2. Handling collisions
-3. Resizing the table
+Python optimizes hash tables into combined tables and split tables (which are optimized for dictionaries used to fill the `__dict__` slot of an object). For simplicity, this post will only look at combined tables.
 
-Python dictionary hash tables use an array to store items and open addressing for conflict resolution.
+In a combined table, the hash table has two important arrays. One is the entries array. The **entries array** stores entry objects that contain the key and value stored in the hash table. The order of entries doesn't change as the table is resized.
 
-Python optimizes hash tables into combined hash tables and split tables. For simplicity, I'll focus on the combined tables.
+The other array is the indices array that acts as the hash table. The **indices array** elements contain the index of their corresponding entry in the entries array.
 
-In a combined table, the hash table has two arrays: one is the entries array, this doesn't change as the table is resized. The other is the array that acts as the hash table, this contains nodes that give the index of the entry in the entries array.
+{{< figure src="/images/hash-tables/hash-table-cpython-structure-high-level.svg" title="Figure 3: The indices array and entries array" >}}
 
-A combined hash table has three kinds of slots in the hash table:
+CPython uses a few different structs to represent a dictionary and these arrays.
 
-1. Unused. This doesn't hold a key value pair now and never has.
-2. Active. Holds an active key value pair.
-3. Dummy. Previously held a key value pair but was deleted.
+### Representing dictionaries
 
-A Python array contains less items than it can hold. This is to avoid collisions.
+There are three important structures used to represent dictionaries:
 
-### Generating an index
+- The dictionary struct (`PyDictObject`), representing the entire dictionary object.
+- A keys object (`PyDictKeysObject`), which contains the hash table indices array (`dk_indices`).
+- An entries array, which appears directly after the corresponding `PyDictKeysObject` in memory and holds the entries referenced by `dk_indices`.
 
-The index for the hash array is generated using by calling a hash function with a given key.
-
-A hash function is a one-way function. It should always produce the same output (called a **digest**) for a given input, but given the hash function, it should be impossible to convert the output back to the input without trial and error.
-
-Python supports different data types as keys for a dictionary. Each data type has its own hashing algorithm. For example, string uses one hash function, and int uses another. Commonly in Python the key is a string. By default, Python uses the SipHash algorithm for strings.
-
-**SipHash** is a relatively fast, cryptographic hash function. Cryptographic means that the function is suitable for use in cryptography, for more information check out the [cryptographic hash function wikipedia page](https://en.wikipedia.org/wiki/Cryptographic_hash_function).
-
-On a 64-bit machine, the SipHash returns a 64-bit word digest (??). The hash is then converted into an index to be used in an array.
-
-Traditionally, a digest is converted into an index using the modulo. For example, if the hash array has 40 positions, the index can be calculated with `digest % 40`. The problem is that modulo operator performs division, and division is a slow operation on most CPUs. Normally this isn't an issue, but in cases where modulo is called often, it can be (Find any benchamarking in python?).
-
-The alternative is to use a bitmask, instead of a modulo. A bitmask is a series of bits that can be logically ANDed with another value to create a new value. For example:
-
-```plain
-00100110
-00000111 3-bit bitmask
-&
-00000110 Result
-```
-
-In order for the bitmask to work, the size of the array must be a power of 2. Any number that is a power of 2 has a single 1 bit:
-
-```plain
-2   0010
-4   0100
-8   1000
-16 10000
-```
-
-This can easily be converted into a bit mask by subtracting 1 from the integer:
-
-```plain
-1  0001
-3  0011
-7  0111
-15 1111
-```
-
-By applying the bitmask to a larger value. As an example, consider 16-bit int. You have an array that contains 32 items, with index 0-31. You can use a mask to convert your 16-bit value into an index within the range:
-
-```plain
-1011 0011 1011 1001
-0000 0000 0001 1111 mask
-
-0000 0000 0001 1001
-```
-
-This is how Python converts a digest to an array index (where `DK_SIZE` macro gets the size of a dictionary):
-
-```c
-size_t mask = (size_t)DK_SIZE(keys) - 1;
-
-// ..
-size_t i = hash & mask;
-```
-
-So that's how Python generates the initial index `i`. If the element at index `i` is empty, then the new element can be added. However, if it's not then Python must resolve the conflict.
-
-### Conflict resolution
-
-Conflict resolution occurs when an element already exists at the index generated by the hash table. Python uses open addressing to resolve conflicts.
-
-<!-- In Python, collision resolution is especially important because the Python hash functions often produce conflicts. This is especially true for for large integer keys. -->
-
-The simplest implementation of open addressing is to linearly search through the array in case of a conflict. This is known as a **linear probing sequence**:
-
-```c
-while(1) {
-  if(table[i++] == EMPTY) {
-    return i;
-  }
-}
-```
-
-This can be a problem in CPython, where many keys often map to the same index. In the case of many collisions on the same integer, linear probing would result in clustering, where there are large areas that are taken. The linear probe would need to go through many iterations until it found a match.
-
-Linear probing sequence works great for hash table implementations that have a hashing algorithm which gives evenly distributed results. The Python hashing algorithm however, is not so good. Conflicts are common. A linear approach could often lead to large sections covered in. One solution would be to improve the hashing algorithm, but the Python devs instead chose a different probing sequence.
-
-Has a perturb value (initially the hash). Perturb is shifted down 5 bits each iteration. Eventually perturb becomes 0, meaning i*5 + 1 is used. This is fine because it produces every int in range 0-2^n.
-
-```c
-#define PERTURB_SHIFT 5
-
-// ..
-
-perturb >>= PERTURB_SHIFT;
-i = mask & (i*5 + perturb + 1);
-```
-<!-- First part of collision detection is to visit table indices using this recurrence: `j = ((5*j) + 1) mod 2**i` -->
-
-
-_Perturbing_ in this context means adding a small shift to a value. That's why the value is called `peturb`. It means that all of the 64-bit hash randomness is used, even though the initially used value is normally much less.
-
-After a while the peturb create 0. Once that happens, it is `j = ((5*j) + 1) mod 2**i` which will eventually create every value from 0-.2**i
-
-Also, when elements are deleted they are not removed from the array. This is so that later searches will continue to be able to find (CHECK)
-
-The final part of the hash table to discuss is resizing. Once array is 2/3 full, resized.
-
-### Resizing the table
-
-Python dictionaries are dynamic. You can continue to add items until you reach the limit (currently ??).
-
-In order to handle this, Python resizes maps as new items are added to them. The resizing works on two premise:
-
-1. Only allow 2/3 of max space to be used
-2. Resize once 2/3 of space is reached
-
-Python only allows 2/3 of an array to be filled with items. This is to keep the hash table array sparse and therefore to reduce collisions.
-
-The array is resized once the space is reached. Resizing involves:
-
-Growth rate is: 
-
-###  Representing dictionaries
-
-The dictionary data structure can be confusing at first.
-
-There are three important parts of a dictionary
-
-* The dictionary struct, representing the entire dictionary
-* A dictionary keys object, which contains keys with (?)
-* A values array,
-
-A dictionary is represented by several structures. These include:
-
-`dk_indices` is the hash table. It stores the index of its entry in `dk_entries`. When a hash table is resized, dk_indices is updated, whereas dk_entries stay in same index (CHECK):
-
-```plain
-+---------------+
-| dk_refcnt     |
-| dk_size       |
-| dk_lookup     |
-| dk_usable     |
-| dk_nentries   |
-+---------------+
-| dk_indices    |
-|               |
-+---------------+
-| dk_entries    |
-|               |
-+---------------+
-```
-
-A quick note before looking at the structures that represent this. Objects in python are represented as a `PyObject`. These contain a header, and are then cast to the correct structure. The dictionary is represented as a `PyDictObject` struct, but it can be passed around as `PyObject`.
-
-The `PyDictObject` structure contains the number of items used, a unique version tag (used for what?), and a keys object:
+As well as other metadata, the `PyDictObject` structure contains the number of items used, and a keys object:
 
 ```c
 typedef struct {
-    PyObject_HEAD
-
-    Py_ssize_t ma_used; // Number of items in dictionary
-
-    uint64_t ma_version_tag; // Globally unique value, changes when dict is modified
-
+    // ..
+    Py_ssize_t ma_used; // Number of entries in dictionary
+    // ..
     PyDictKeysObject *ma_keys; // Keys object
-
-    PyObject **ma_values; // NULL for combined tables
+    // ..
 } PyDictObject;
 ```
 
-The keys object is important. It ...
+The keys object is important. It contains the array of indices (`dk_indices`) and metadata about the size of the hash table and the number of usable entries.
+
+Although it isn't part of the struct, the entries array always follows a `PyDictKeysObject`. The entries array is an array of `PyDictKeyEntry` with size `dk_usable`. It's allocated at the same time a `PyDictKeysObject` is allocated.
+
+You can see all the members of `PyDictKeysObject`:
 
 ```c
 struct _dictkeysobject {
     Py_ssize_t dk_refcnt;
-
-    /* Size of the hash table (dk_indices). It must be a power of 2. */
-    Py_ssize_t dk_size;
-
-    /* Function to lookup in the hash table (dk_indices)
+    Py_ssize_t dk_size; // size of hash table (dk_indices)
     dict_lookup_func dk_lookup;
-
-    /* Number of usable entries in dk_entries. */
-    Py_ssize_t dk_usable;
-
-    /* Number of used entries in dk_entries. */
-    Py_ssize_t dk_nentries;
-
-    /* Hash table of dk_size entries. It holds indices in dk_entries,
-       or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
-
-       Indices must be: 0 <= indice < USABLE_FRACTION(dk_size).
-
-       The size in bytes of an indice depends on dk_size:
-
-       - 1 byte if dk_size <= 0xff (char*)
-       - 2 bytes if dk_size <= 0xffff (int16_t*)
-       - 4 bytes if dk_size <= 0xffffffff (int32_t*)
-       - 8 bytes otherwise (int64_t*)
-
-       Dynamically sized, SIZEOF_VOID_P is minimum. */
-    char dk_indices[];  /* char is required to avoid strict aliasing. */
-
-    /* "PyDictKeyEntry dk_entries[dk_usable];" array follows:
-       see the DK_ENTRIES() macro */
+    Py_ssize_t dk_usable; // number of usable entries in dk_entries
+    Py_ssize_t dk_nentries; // number of used entries in dk_entries
+    char dk_indices[];  // char required to avoid strict aliasing
+    // "PyDictKeyEntry dk_entries[dk_usable];" array follows:
 };
+
+// ..
+
+typedef struct _dictkeysobject PyDictKeysObject;
 ```
-`dk_indices` contains `PyDictKeyEntry`. This contains the hash, key, and value for an item:
+
+The size of each `dk_indices` element depends on the capacity of the entries array. Since `dk_indices` holds an index value, the element size can be small if the number of entries in the entries array is low. For example, if there are 127 possible entries or less, every address value can fit in 1-byte.
+
+The `dk_entries` array contains `PyDictKeyEntry` objects. These contain the hash, the key, and the value for an item:
 
 ```c
 typedef struct {
@@ -336,35 +166,115 @@ typedef struct {
 } PyDictKeyEntry;
 ```
 
-`dk_entries` is an array of the entries (as a `PyDictKeyEntry`). `DK_ENTRIES(dk)` is used to get a pointer to the entries. DK_ENTRIES isn't included in a struct, but it's allocated and memset each time a new keys object is created ([see code](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/dictobject.c#L568-L568))
+Together, these structs represent a Python dictionary.
 
+{{< figure src="/images/hash-tables/hash-table-cpython-structure.svg" title="Figure 4: The `dk_indices` and `dk_entries` arrays" >}}
 
+The next part of the hash table implementation to look it is how an index for a key is generated.
 
+### Generating an index
 
-Python works by parsing and compiling code into bytecode that runs on a stack. The function for intializing an empty dictionary is, and the function for adding items is.
+An index for the hash array is generated by calling a hash function with a given key.
 
+A hash function is a one-way function that produces the same output for a given input. It's one-way in the sense that, given the hash function, it should be difficult to convert the output back to the input without trial and error.
 
+Python supports different data types as keys for a dictionary. Each supported data type has its own associated hashing algorithm. For strings, Python uses the SipHash algorithm.
 
-```c
-struct _dictkeysobject {
-    Py_ssize_t dk_refcnt;
-    Py_ssize_t dk_size;
-    dict_lookup_func dk_lookup;
-    Py_ssize_t dk_usable;
-    Py_ssize_t dk_nentries;
-    char dk_indices[];
-};
+**SipHash** is a relatively fast, cryptographic hash function. Cryptographic means that the function is suitable for use in cryptography (for more information check out the [cryptographic hash function Wikipedia page](https://en.wikipedia.org/wiki/Cryptographic_hash_function)). On a 64-bit machine, SipHash returns a 64-bit hash. The hash is then converted into an index to be used in an array.
+
+Traditionally, a hash is converted into an index using the modulo operator. For example, if the hash array has 40 slots, the index can be calculated with `hash % 40`, giving a value between 0-39. Unfortunately, the modulo operator performs division, and division is a slow operation on most CPUs.
+
+The alternative is to use a bitmask. A **bitmask** is a pattern of bits that can be logically ANDed with another value to remove (or _mask_) unwanted bits. Any bit that is a 0 in the mask will become 0 in the result, and any bit that is 1 in the mask will remain the same after being ANDed. For example:
+
+```plain
+10110110
+00000111 3-bit bitmask
+&
+00000110 Result
 ```
 
-* The dictobject struct
-* A _dictkeysobject object (keys & hashes)
-* A values array
+In order for the bitmask to produce a value in the full range of the array, the size of the array must be a power of 2, so the bitmask can be a full sequence of 1s.
 
-The Python hash table
+Note that any number that is a power of 2 has a single 1 bit:
 
-### Using a dictionary
+```plain
+2  000010
+4  000100
+8  001000
+16 010000
+```
 
-Now it's time to see how dictionaries are implemented for a small snippet of Python code.
+This can be converted into a bit mask of all 1s by subtracting 1 from the value:
+
+```plain
+(2 - 1)   1 00001
+(4 - 1)   3 00011
+(8 - 1)   7 00111
+(16 - 1) 15 01111
+```
+
+A 2^n - 1 bit mask has the same effect as modulo 2^n. As an example, consider a 16-bit int. You have an array that contains 32 (2^5) items, with index 0-31. You can use a 5-bit mask to convert your 16-bit value into an index within the range:
+
+```plain
+1011 0011 1011 1001
+0000 0000 0001 1111 mask
+
+0000 0000 0001 1001
+```
+
+The following is how CPython converts a hash into an array index (where `DK_SIZE` macro gets the size of a dictionary):
+
+```c
+size_t mask = (size_t)DK_SIZE(keys) - 1;
+
+// ..
+size_t i = hash & mask;
+```
+
+So that's how CPython generates the initial index `i`. If the slot at index `i` is empty, then the index of the entry can be added to the hash table. If it's not, CPython must resolve the conflict.
+
+### Conflict resolution
+
+Conflict resolution occurs when an element already exists at an index generated from a new key. CPython uses open addressing to resolve conflicts.
+
+The simplest implementation of open addressing is to linearly search through the array in case of a conflict. This is known as linear probing:
+
+```c
+while(1) {
+  if(table[i++] == EMPTY) {
+    return i;
+  }
+}
+```
+
+Linear probing can be inefficient in CPython, because some of the CPython hash functions result in many keys mapping to the same index. If there are many collisions at the same index, linear probing results in clusters of active slots causing the linear probe to go through many iterations before finding a match.
+
+{{< figure src="/images/hash-tables/hash-table-clustering.svg" title="Figure 5: Multiple collisions with linear probing" >}}
+
+One solution would be to use improved hash functions at the price of slower hashing. Instead, CPython makes the probing more random. It uses the rest of the hash to generate a new index. This is done by storing the hash in a variable named `perturb` and shifting `perturb` down 5 bits (`PERTURB_SHIFT`) each iteration. This is combined with the following calculation:
+
+```cpp
+perturb >>= PERTURB_SHIFT;
+i = mask & (i*5 + perturb + 1);
+```
+
+After a few shifts, `perturb` becomes 0, meaning just `i*5 + 1` is used. This is fine because `mask & i*5 + 1` produces every integer in range 0-`mask`.
+
+The next part of the hash table to discuss is deletion.
+
+### Deleting from a dictionary
+
+When items are deleted from a dictionary, the entry in the entries array is deleted (set to `NULL`) and the slot in the indices array is put in a dummy state by adding a negative value to the slot.
+
+The reason items aren't removed from the indices array when they are deleted is because it would mess up probing that had previously run when the index was active.
+
+When a dictionary is resized, any entries that were deleted since the last resizing aren't copied over to the new dictionary.
+
+Now that you have an overview of the hash table implementation, it's time to see how dictionaries are implemented in detail.
+
+### Implementing a dictionary
+
+This section will walk through the CPython code that implements the following snippet:
 
 ```python
 x = {}
@@ -372,36 +282,48 @@ x['key'] = 'a'
 x['key2'] = 'b'
 ```
 
-The two opcodes that I'll show you are `BUILD_MAP`, and `STORE_SUBSCR`.
+When you run CPython with an input file, CPython parses the source code and (after several stages of parsing) converts it into byte-code, which is then executed by the CPython virtual machine.
 
-`BUILD_MAP` is used to initialize the map. That calls `_PyDict_NewPresized((Py_ssize_t)oparg)`. In the example code, oparg is 0 (the dictionary is empty). `_PyDict_NewPresized` just calls through `PyDict_New()` without any args to create a new dictionary:
+**Byte-code** is simply an object with associated values.
+
+The following is the byte-code produced from the above Python snippet:
+
+```plain
+  1           0 BUILD_MAP                0
+              2 STORE_NAME               0 (x)
+              4 LOAD_CONST               0 ('a')
+              6 LOAD_NAME                0 (x)
+              8 LOAD_CONST               1 ('key')
+             10 STORE_SUBSCR
+             12 LOAD_CONST               2 ('b')
+             14 LOAD_NAME                0 (x)
+             16 LOAD_CONST               3 ('key2')
+             18 STORE_SUBSCR
+             20 LOAD_CONST               4 (None)
+```
+
+_Note: You can view byte-code using the Python dis module._
+
+The byte-code is then evaluated by CPython one opcode at a time in a large switch statement:
 
 ```c
-PyObject *
-_PyDict_NewPresized(Py_ssize_t minused)
-{
+for (;;) {
     // ..
-
-    if (minused <= USABLE_FRACTION(PyDict_MINSIZE)) {
-        return PyDict_New();
+    switch (opcode) {
+        case TARGET(BUILD_MAP): {
+            // do something
+        }
+        // ..
     }
-
-   // ..
-}
 ```
 
-`PyDict_New` is a proxy function, and calls through to `new_dict()` after implementing refs.
+This post will focus on what happens when the `BUILD_MAP`, and `STORE_SUBSCR` opcodes are evaluated.
 
-```c
-PyObject *
-PyDict_New(void)
-{
-    dictkeys_incref(Py_EMPTY_KEYS);
-    return new_dict(Py_EMPTY_KEYS, empty_values);
-}
-```
+#### Creating a dictionary
 
-`new_dict()` allocates memory for a dict object and sets initial values for dict object.
+The `BUILD_MAP` opcode initializes a map. The `BUILD_MAP` case statement allocates a dictionary object and initializes its values.
+
+The important function here is `new_dict()`. `new_dict()` allocates a `PyDictObject` object by calling `PyObject_GC_New`. It then sets the initial values for the `PyDictObject` object:
 
 ```c
 static PyObject *
@@ -424,39 +346,19 @@ new_dict(PyDictKeysObject *keys, PyObject **values)
 }
 ```
 
-That's it. There's now a dict object assigned to a variable (code for assigning to a variable isn't shown).
+There's now a dict object in memory, which will be assigned to `x` when the next opcode runs.
 
-The next opcode adds a value to the map. This is `STORE_SUBSCR`, short for store subscript (subscript notation is [], e.g. `x['key'] = 'hello'`).
+#### Storing a value
 
-`STORE_SUBSCR` is a more generic opcode. It can be called on many objects, like list. So `PyObject_SetItem` method is called with the map object. This then accesses the `tp_as_mapping` member of the map object. This object contains function pointers that implement different behaviors (like a set method). You can see this in the code:
+The other opcode to look at is `STORE_SUBSCR`, short for store subscript (subscript notation is `[]`, e.g. `x['key'] = 'hello'`). `STORE_SUBSCR` adds a value to the map.
 
-```c
-PyObject_SetItem(PyObject *o, PyObject *key, PyObject *value)
-{
-    PyMappingMethods *m;
+`STORE_SUBSCR` is a generic opcode. It can be legally called on many objects, like lists or strings.
 
-    // ..
-    m = o->ob_type->tp_as_mapping;
-    if (m && m->mp_ass_subscript)
-        return m->mp_ass_subscript(o, key, value);
-    // ..
-}
-```
+A quick primer on Python objects. In CPython, each Python object has an associated **object type** that contains generic functions and values. For example, a length function used to calculate the object's length.
 
-The registered dict `mp_ass_subscript` is the dubiously-named `dict_ass_sub`. `dict_ass_sub` deletes an item if there isn't any value to set, otherwise it calls the more sensibly named `PyDict_SetItem`:
+The object type function for dictionary objects that's used during `STORE_SUBSCR` execution is the dubiously-named `dict_ass_sub()`. `dict_ass_sub()` calls `PyDict_SetItem()` when a value is set using subscript notation.
 
-```c
-static int
-dict_ass_sub(PyDictObject *mp, PyObject *v, PyObject *w)
-{
-    if (w == NULL)
-        return PyDict_DelItem((PyObject *)mp, v);
-    else
-        return PyDict_SetItem((PyObject *)mp, v, w);
-}
-```
-
-`PyDict_SetItem` is where a hash is set. Python checks to see if a hash has already been created for the string, if it's not then it calls `PyObject_Hash()` with the key:
+`PyDict_SetItem()` is where the hash is created. CPython first checks to see if a hash has already been created for the string. If a hash hasn't been created, CPython calls `PyObject_Hash()` with the key:
 
 ```c
 int
@@ -474,47 +376,9 @@ PyDict_SetItem(PyObject *op, PyObject *key, PyObject *value)
 }
 ```
 
-`PyObject_Hash` gets the object type (`ob_type`) from the object. If an object type is hashable, it has a `tp_hash` function set in its type structure. See the [definition for the `PyUnicode_Type` structure](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/unicodeobject.c#L15243-L15243). `PyObject_Hash` calls `tp_hash` on the `PyObject` it was called with to generate the hash. For unicode, this is `unicode_hash`.
+`PyObject_Hash` calls the relevant hash function for the object type to generate a hash (check the [\_Py_HashBytes() source code](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Python/pyhash.c#L146-L146) if interested). The hash is then stored on the object so it can be used in the future without running the hash function again.
 
-`unicode_hash` calls `_Py_HashBytes` to generate a hash (check the source code if interested). It then sets a hash on the object that was hashed (caching it for later use).
-
-```c
-static Py_hash_t
-unicode_hash(PyObject *self)
-{
-    Py_uhash_t x;  /* Unsigned for defined overflow behavior. */
-
-    // ..
-
-    x = _Py_HashBytes(PyUnicode_DATA(self),
-                      PyUnicode_GET_LENGTH(self) * PyUnicode_KIND(self));
-    _PyUnicode_HASH(self) = x;
-    return x;
-}
-```
-
-Once the hash has been generated, `PyDict_SetItem` can continue. `PyDict_SetItem`  can optimize for an empty dict. This creates a keys object with the minimum size (8). It also adds the function used to lookup items.
-
-```c
-int
-PyDict_SetItem(PyObject *op, PyObject *key, PyObject *value)
-{
-    PyDictObject *mp;
-    Py_hash_t hash;
-    // ..
-
-    mp = (PyDictObject *)op;
-
-    // ..
-
-    if (mp->ma_keys == Py_EMPTY_KEYS) {
-        return insert_to_emptydict(mp, key, hash, value);
-    }
-    // ..
-}
-```
-
-`insert_to_emptydict` creates a new keys object. Remember, a keys object . Look at that first.
+Once the hash has been generated, `PyDict_SetItem()` can continue. `PyDict_SetItem()` optimizes for an empty dictionary by calling `insert_to_emptydict()`. `insert_to_emptydict()` creates a new keys object of size `PyDict_MINSIZE` (currently 8).
 
 ```c
 static int
@@ -527,8 +391,7 @@ insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 }
 ```
 
-
-Once the keys have been created, the entry can be added. This is done by calculating the hash (logical & the hash with the mask):
+Once the keys object has been created, the entry can be added. This is done by calculating the index with bitmasking:
 
 ```c
 static int
@@ -541,7 +404,8 @@ insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 }
 ```
 
-Then the index is stored in the hash table. That's an interesting function.
+The index is then stored in the hash table by calling `dictkeys_set_index()`:
+
 ```c
 static int
 insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
@@ -553,7 +417,9 @@ insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 }
 ```
 
-This determines the size of the keys based on the number of items that are stored. It gets the number of items from the keys, then it checks to see if the size is below a limit. For example, if the number of addressable items is less than 255 (0xff), then the indices only need to be 1 byte to store all possible addresses. There are other cases for 2 bytes and 4 bytes. You can see the other cases in the code [s](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/dictobject.c#L359-L359).
+`dictkeys_set_index()` determines the size of the keys based on the number of entries that can be addressed by the hash table. It gets the number of items from the keys, then checks to see if the size is below a threshold.
+
+For example, if the number of addressable items is less than 127 (0x7f), the indices only need to be 1 byte to store all possible addresses. There are other cases for 2 bytes and 4 bytes. You can see the other cases in the [dictkeys_set_index() code](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/dictobject.c#L359-L359).
 
 ```c
 /* write to indices. */
@@ -573,7 +439,7 @@ dictkeys_set_index(PyDictKeysObject *keys, Py_ssize_t i, Py_ssize_t ix)
 }
 ```
 
-After `dictkeys_set_index` has stored the index of the key entry in the `dk_indices` array (memory?), the key entry is accessed. Since this is first item in the list, the entry is known to be at index 0 in entries list. The entry item values then get set as well as the dictionary values,:
+After `dictkeys_set_index()` has stored the index of the key entry in the `dk_indices` array, the key entry is accessed. Since this is first item in the list, the entry is known to be at index 0 in the entries array. The entry item values then get set as well as the dictionary values:
 
 ```c
 static int
@@ -594,26 +460,17 @@ insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 }
 ```
 
-Success! The item with value of "" has been added to the dictionary.
+Success! An object with the value of "a" has been added to the dictionary.
 
-The final part of the code to look at is what happens when a second item is added. In this case, you can see the code that potentially resizes and avoids collisions. That happens in `PyDict_SetItem` again. If the keys object exists on the dictionary that it was called with, it calls `insertdict`:
+The more interesting case is when an item is added to a non-empty dictionary. During this operation the hash table must potentially resize and resolve collisions. This happens in `PyDict_SetItem()`. In the case of a non-empty dictionary, `insertdict()` is called with the dictionary structure, the key, the hash, and the value.
 
-```c
-int
-PyDict_SetItem(PyObject *op, PyObject *key, PyObject *value)
-{
-    // ..
-    return insertdict(mp, key, hash, value);
-}
-```
+`insertdict()` does several things:
 
-`insertdict` does several things:
+- Handles collisions.
+- Inserts item.
+- Checks if the table needs resizing (resizing if needed).
 
-- checks if needs resizing
-- handles collisions
-- adds item
-
-First `insertdict` calls the maps `dk_lookup`, which is assigned depending on the key type.
+First `insertdict()` calls the dictionary's `dk_lookup()`, which is assigned depending on the key types used in the dictionary.
 
 ```c
 static int
@@ -628,11 +485,11 @@ insertdict(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject *value)
 }
 ```
 
-This calls the objects dk_lookup. Initially this is set to an optimized version that doesn't check need to handle dummy. Once an item is deleted, it's updated to `lookdict_unicode`.
+Initially `dk_lookup()` is set to an optimized lookup function that doesn't check for dummy values. Once an item is deleted, it's updated to `lookdict_unicode()`.
 
-`lookdict_unicode` uses the key hash and mask to generate an index for the item. If an item already exists at the index (there's a conflict!) it enters the conflict resolution, by changing the index using the algorithm shown earlier.
+`lookdict_unicode()` uses the key hash and mask to generate an index for the item (`i`). `dictkeys_get_index()` is then called to access the element at index `i` (`ix`). If an item already exists at the index, it enters conflict resolution.
 
-First, check out the happy path. ix is empty, and it can be returned.
+First, consider the happy path. In this case, `ix` is empty, and `lookdict_unicode()` can return:
 
 ```c
 static Py_ssize_t _Py_HOT_FUNCTION
@@ -655,12 +512,16 @@ lookdict_unicode(PyDictObject *mp, PyObject *key,
        //
     }
     // ..
-}
 ```
 
-_Note: `dictkeys_get_index` performs the logic to get the correct memory address depending on the size of the map._
+_Note: `dictkeys_get_index()` performs logic to get the correct memory address depending on the size of the table, as seen earlier in this post._
 
-If it isn't, then the perturb is added to generate a new index:
+If `ix` isn't empty, there are two possibilities:
+
+1. The key already exists in the dictionary.
+2. Another key exists in the index (potentially a dummy).
+
+The first option is that the key used to generate the index already exists in the array. In that case, `lookdict_unicode()` checks the entry using the index and compares the entry key with the key that's being added. If they are the same, the entry can be overwritten with the new value:
 
 ```c
 static Py_ssize_t _Py_HOT_FUNCTION
@@ -687,45 +548,46 @@ lookdict_unicode(PyDictObject *mp, PyObject *key,
 }
 ```
 
-That's how conflict resolution works. Back in insertdict, has `ix` (memory location of item in hash table).
-
-Now, time to insert. But first, the map might have grown too large. That means a resize will need to be done.
+If not, then a new index must be generated. This is done in the way described earlier, by shifting the hash (`perturb`), multiplying by 5 and adding 1:
 
 ```c
-static int
-insertdict(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject *value)
+static Py_ssize_t _Py_HOT_FUNCTION
+lookdict_unicode(PyDictObject *mp, PyObject *key,
+                 Py_hash_t hash, PyObject **value_addr)
 {
-    PyObject *old_value;
-    PyDictKeyEntry *ep;
-    // ..
-
-    Py_ssize_t ix = mp->ma_keys->dk_lookup(mp, key, hash, &old_value);
-
-    // ..
-
-    if (ix == DKIX_EMPTY) {
+   // ..
+    for (;;) {
         // ..
-        if (mp->ma_keys->dk_usable <= 0) {
-            /* Need to resize. */
-            if (insertion_resize(mp) < 0)
-                goto Fail;
+        if (ix >= 0) {
+            // ..
         }
-        // ..
+        perturb >>= PERTURB_SHIFT;
+        i = mask & (i*5 + perturb + 1);
     }
+    // ..
 }
 ```
 
-`insertion_resize` increases the dictionary hash table by the growth rate (3 by default):
+This probing sequence continues until an available index is found, which is guaranteed because there are always empty spaces.
 
-```c
-static int
-insertion_resize(PyDictObject *mp)
-{
-    return dictresize(mp, GROWTH_RATE(mp));
-}
-```
+#### Resizing the dictionary
 
-Since the hash table must be a power of 2, dictresize calculaates the next lowest power of two that enables it to. This is done by bit shifting an 8-bit Py_ssize_t until the value is larger.
+Python dictionaries are dynamic. You can continue to add new entries and CPython will increase the dictionary in order to accommodate them.
+
+To handle this, Python resizes dictionary hash tables as needed when new items are added. The hash table is resized when 2/3 of the space of the indices array (`dk_indicies`) is reached (this ratio is known as the **load factor**).
+
+The reason only 2/3 of the hash table is ever used is to keep the array sparse, and therefore to reduce collisions.
+
+Resizing involves:
+
+- Calculating the new table size and the usable fraction of the size.
+- Allocating a new keys object, which contains the hash table (`dk_indices`) and the entries array.
+- Adding all entries to the new entries array. If any entries have been deleted since the last resize, they won't be copied over.
+- Rebuilding the hash table indices array (by calculating new indices for each of the items).
+
+The current growth rate is 3, so the new size of a hash table resized during insertion is the number of used entries multiplied by 3.
+
+The size has to be a power of 2, so the minimum power of 2 is calculated during a resize. You can see this in `dictresize()`, which is called to resize a dictionary. Since the hash table must be a power of 2, `dictresize()` calculates the next lowest power of 2 that is greater than `minsize` by left shifting a single bit of a signed integer (initially with value 8) until the integer is larger than the `minsize`:
 
 ```c
 static int
@@ -743,14 +605,16 @@ dictresize(PyDictObject *mp, Py_ssize_t minsize)
 }
 ```
 
-Python gets a reference to the old keys object (`mp->ma_keys`). It allocates a new keys object table (`new_keys_object`). Then it copies over the old entries into the new entries location. Copies over `lookdict` values, etc.: Some other housekeeping, including freeing dictionary object.
+`dictresize()` gets a reference to the old keys object (`mp->ma_keys`). It allocates a new keys object table (`new_keys_object`). Then copies over the old entries into the new entries location. It also copies over other values like function pointers, and performs housekeeping, including freeing the old keys object.
 
-Copies over entries. If there are entries that have been deleted (and their key is NULL), they aren't copied over:
+If entries have been deleted since the last resize, `mp->ma_used` will be less than `oldkeys->dk_nentries`. In this case, the deleted keys entry value will be NULL and they won't be to the `newentries`:
 
 ```c
 static int
 dictresize(PyDictObject *mp, Py_ssize_t minsize)
 {
+    // ..
+    numentries = mp->ma_used;
     // ..
         if (oldkeys->dk_nentries == numentries) {
             memcpy(newentries, oldentries, numentries * sizeof(PyDictKeyEntry));
@@ -768,127 +632,12 @@ dictresize(PyDictObject *mp, Py_ssize_t minsize)
 }
 ```
 
-The final part is to rebuild the indices.
+The final part after resizing is to rebuild the indices array. This is done by looping over each entry and recalculating its position in the array using the updated bitmask and the probing sequence seen earlier.
 
-```c
-build_indices(mp->ma_keys, newentries, numentries);
-```
-
-[`build_indices`](https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/dictobject.c#L1147-L1147) goes through the insertion process for each entry. Any items that had been deleted, won't be included (why??)\
-
-Now that's it for the dictionary implementation.
-
-### Deleting from dictionary
-
-When items are deleted, they are put in a dummy state. This is because they need to exist in order for probing to be deterministic.
-
-`dk_indices` is the hash table. It holds index in entries, or DKIX_EMPTY(-1) or DKIX_DUMMY(-2). When an item is deleted its entry is set to NULL, and its indices item is set to `DKIX_DUMMY`. Dummies can't be removed, because that would mess up probing for keys that had collisions. Instead they're kept in the map until the map is resized, at which point they aren't copied over (check).
-
-## Questions
-
-- What is use of ma_version_tag? Can be used for caching OPCODE
-- Difference between ma_used and dk_usable
-- What does incrementing ref do? (used as part of garabage collection)
+That's an overview of the CPython dictionary implementation. If you're interested, I encourage you to read the source code for interesting edge cases and optimizations!
 
 ## Conclusion
 
-Hash tables are great, and hypothetically they are relatively simple. However, real-life implementations of hash tables can be complex. Especially in an interpreted language like Python.
+Hash tables are a popular way to implement the dictionary data type. Theoretically they are intuitive to understand. However, real-life implementations of hash tables can be complex.
 
-The next blog post will take a look at a different kind of hash table: a chained hash table.
-
-
-<!-- ### WHW
-
-`tp_new` is called when new dictionary is created (WHEN??).
-
-New `PyObject` created from calling type->`tp_alloc` (`PyType_GenericAlloc`). Values initialized (AKA ma_used set to 0 etc, unique ma_version_tag assigned, new keys object with min size created, ). self returned by `tp_new`.
-
-`dict_init` called. `dict_update_common` called.
-
-When item is added, `PyDict_SetItem` is called. -->
-
-
-<!-- Expression is converted to `STORE_SUBSCR` (somehow).
-In ceval: https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Python/ceval.c#L1836-L1836. `PyObject_SetItem(container, sub, v)` called
-
-`tp_as_mapping` struct accessed. `mp_ass_subscript` called (`dict_ass_sub`). https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/abstract.c#L191-L191
-
-`PyDict_SetItem` called: -->
-<!-- 
-`PyDict_SetItem`: validates input, creates a hash if one doesn't already exist (stored on `PyObject`)
-
-Hash created in `PyObject_Hash`. `tp_hash` called on object that should be hashed. e.g. for string, https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/unicodeobject.c#L11738-L11738.
-
-For me hash function is https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Python/pyhash.c#L367-L367. No need to dive into the details, but ultimately it generates a hash value (like what?). Uses SipHash. Produces 64 bit. https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Python/pyhash.c#L416-L416.
-
-If first time, call optimized `insert_to_emptydict` (no need to check). Else call `insertdict`, which may resize dict.
-
-`insertdict`. If table is split, keys are stored in ma_keys and values are stored in ma_values. If table is split, and key is not unicode object, `insertion_resize` called to resize entries and table.
-
-`dk_lookup` to check for item. `lookdict` is one possibility (how?).
-
-If is split table, resized, `ix` set to DKIX_EMPTY. do something
-
-If `ix` is empty: if no usable, resize map (`insertion_resize`), call `find_empty_slot` to find position in hash table (). Get last entry in entries, set the index (`dictkeys_set_index`), key, hash, and value of entry (if combined). decrease usable, increase nentries, -->
-
-<!-- 
-### `lookdict`
-
-Gets e0 in keys. Gets mask, `DK_MASK(dk)`, get index by masking hash with mask (`hash & mask`) and calls `dictkeys_get_index`. Loops until it finds free slot.
-
-If ix >= 0, access entry at dk_entries[i], if entry has same key, then set value_address to entry->me_value and return `dk_entries[i]`.
-
-If key not same, and hash same, increment object ref to avoid it being cleaned, compare key with entry key. If keys are not equal, do nothing (next loop). If they are, then set value_addr = ep->me_value and return ix. Else, shift with perturb. -->
-
-<!-- 
-### `insertion_resize`
-
-
-`insertion_resize` will increase the hash table by the number of used keys * 3 (and must be power of 2). First it gets minimum possible size by shifting an int 8 left until it has a value greater than `minsize`.
-
-Accesses on keys object (type `_dictkeysobject`). Allocates a  new table (`new_keys_object`) `new_keys_object` validates new size (is power of 2, is larger than min). Generates a usable fraction of ((n << 1) / 3), this keeps table spares, reducing collisions. Sets `es` var (??) to numver between 1-8. Optimization for size of min size: https://github.com/python/cpython/blob/master/Objects/dictobject.c#L551-L551. Allocates memory for object: sizeof(PyDictKeysObject), `+ es * size`, `+ sizeof(PyDictKeyEntry) * usable`. Increments total number of refs. Initializes new `_dictkeysobject` (size, usable, dk_refcnt). Sets es * size bytes to 0xff, and sets usable bytes to 0. Returns new object.
-
-`dk_lookup` value set (this function used to perform lookups). One example is `lookdict`. TODO: Find out how it's set. Converts split table into combined table if old version is split table. If old dkentries is same as ma_used, copy entries from oldentries to newentries (`memset`), or loop over oldentries from 0 - newentries and add to newentries. If keys are minsize, dec reftotal and return to keys_free_list, else dec reftotal and free oldkeys.
-
-`build_indices` called with ma_keys, newentries, and numentries;. Mask created from entries-size - 1. Loop over each key entry, mask hash (`size_t i =  hash & mask`). If there is a collision (`dictkeys_get_index(keys, i) != DKIX_EMPTY`), shift value until free space is found. Call `dictkeys_set_index` with keys, key index, and index in hash table.
-
-Collision avoidance:
-
-```c
-perturb >>= PERTURB_SHIFT;
-i = mask & (i*5 + perturb + 1);
-```
-
-`dictkeys_set_index`, set indices[i] to ix (which is position of key object in keys array, key entry has `value` member if combined table).
-Size of indices depends on the number of items, e.g. for < 255, `int8_t`, for > 0xffffffff, `int64_t`.
-
-Finally, set dk_usable and dk_nentries. -->
-
-
-<!-- Initial creation is :
-https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Python/ast.c#L2500-L2500 -->
-
-<!-- `Dict()` is called to create dictionary expression node. `astfold_expr` called with Dict.keys and again with Dit.value. Compiler creates adds opcode `BUILD_MAP`. `BUILD_MAP` called in ceval.
-
-`_PyDict_NewPresized` called, `PyDict_New` called. `new_dict` called. If there are some free min size dicts (numfree), use that. Else, create new object, set keys, ma_values, ma_used, ma_version_tag, to initial vals. keys and values is empty obj?.
-
-Object is assigned. Now add. -->
-
-
-<!--
-`mp_ass_subscript` called (`dict_ass_sub`). https://github.com/python/cpython/blob/eb2b0c694aef6122fdf95015abb24e0d095b6401/Objects/abstract.c#L191-L191
-
-`PyDict_SetItem` called:
-
-`PyDict_SetItem`: validates input, creates a hash if one doesn't already exist (stored on `PyObject`)
-
-
-
-
-
-
-
-`_PyDict_NewPresized` called, `PyDict_New` called. `new_dict` called. If there are some free min size dicts (numfree), use that. Else, create new object, set keys, ma_values, ma_used, ma_version_tag, to initial vals. keys and values is empty obj?.
-
-Object is assigned. Now add. -->
-
+Future posts in this series will focus on different search trees that can be used to implement the dictionary data type as an alternative to hash tables.
