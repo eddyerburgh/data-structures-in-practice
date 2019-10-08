@@ -1,6 +1,6 @@
 ---
 title: "Hash tables"
-date: 2019-10-04
+date: 2019-10-08
 ---
 
 In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the most popular Python interpreter — CPython. <!--more-->
@@ -15,15 +15,21 @@ The main dictionary operations are:
 - `get_item(key)`
 - `delete_item(key)`
 
-A dictionary is a useful data type that's implemented in most languages — as objects in JavaScript, hashes in Ruby, and dictionaries in Python. Many languages implement dictionaries with hash tables.
+A dictionary is a useful data type that's implemented in most languages — as objects in JavaScript, hashes in Ruby, and dictionaries in Python, to name just a few. Often, dictionaries are implemented with hash tables.
 
-A **hash table** stores items in an array. The index for an item is calculated from the key using a **hashing function**, which generates a hash value from an input of arbitrary size.
+A **hash table** stores items in an array. The index for an item is calculated from the key using a **hashing function**, which generates a fixed-size hash value from an input of arbitrary size.
 
 Commonly, this is done in two steps:
 
 ```python
 hash = hash_function(key)
 index = hash % array_size
+```
+
+A value can then be stored in the array:
+
+```python
+arr[index] = value
 ```
 
 It's possible that a key maps to the same index as another key. This is known as a **collision**. The process of handling a collision is known as **collision resolution**.
@@ -98,7 +104,7 @@ print(tel['alice']) # 2025550143
 
 Internally, CPython implements dictionaries with hash tables.
 
-_Note: The CPython code in this post is from version 3.9.0 alpha 0_
+_Note: The CPython code in this post is from version 3.9.0 alpha 0._
 
 ### Hash tables in CPython
 
