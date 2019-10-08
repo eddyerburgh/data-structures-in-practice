@@ -29,7 +29,7 @@ index = hash % array_size
 A value can then be stored in the array:
 
 ```python
-arr[index] = value
+arr[index] = val
 ```
 
 It's possible that a key maps to the same index as another key. This is known as a **collision**. The process of handling a collision is known as **collision resolution**.
