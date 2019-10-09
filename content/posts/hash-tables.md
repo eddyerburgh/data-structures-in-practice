@@ -188,7 +188,7 @@ A hash function is a one-way function that produces the same output for a given 
 
 Python supports different data types as keys for a dictionary. Each supported data type has its own associated hashing algorithm. For strings, Python uses the SipHash algorithm.
 
-**SipHash** is a relatively fast, cryptographic hash function. Cryptographic means that the function is suitable for use in cryptography (for more information check out the [cryptographic hash function Wikipedia page](https://en.wikipedia.org/wiki/Cryptographic_hash_function)). On a 64-bit machine, SipHash returns a 64-bit hash. The hash is then converted into an index to be used in an array.
+**SipHash** is a relatively fast hash function. On a 64-bit machine, SipHash returns a 64-bit hash. The hash is then converted into an index to be used in an array.
 
 Traditionally, a hash is converted into an index using the modulo operator. For example, if the hash array has 40 slots, the index can be calculated with `hash % 40`, giving a value between 0-39. Unfortunately, the modulo operator performs division, and division is a slow operation on most CPUs.
 
