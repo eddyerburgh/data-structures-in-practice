@@ -247,7 +247,7 @@ The simplest implementation of open addressing is to linearly search through the
 
 ```c
 while(1) {
-  if(table[i++] == EMPTY) {
+  if(table[++i] == EMPTY) {
     return i;
   }
 }
@@ -264,7 +264,7 @@ perturb >>= PERTURB_SHIFT;
 i = mask & (i*5 + perturb + 1);
 ```
 
-After a few shifts, `perturb` becomes 0, meaning just `i*5 + 1` is used. This is fine because `mask & i*5 + 1` produces every integer in range 0-`mask`.
+After a few shifts, `perturb` becomes 0, meaning just `i*5 + 1` is used. This is fine because `mask & (i*5 + 1)` produces every integer in range 0-`mask` exactly once.
 
 The next part of the hash table to discuss is deletion.
 
@@ -397,7 +397,7 @@ insert_to_emptydict(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 }
 ```
 
-Once the keys object has been created, the entry can be added. This is done by calculating the index with bitmasking:
+When the keys object has been created, the entry can be added. This is done by calculating the index with bitmasking:
 
 ```c
 static int
@@ -574,7 +574,7 @@ lookdict_unicode(PyDictObject *mp, PyObject *key,
 }
 ```
 
-This probing sequence continues until an available index is found, which is guaranteed because there are always empty spaces.
+This probing sequence continues until an available index is found. This is guaranteed because there are always empty spaces available, and the recurrence `(i*5 + 1) mod 2**i` will generate each int in `range(0 - 2**i)`.
 
 #### Resizing the dictionary
 
