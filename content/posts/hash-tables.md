@@ -82,8 +82,6 @@ Although hash tables sound simple in theory, there are many nuances to implement
 
 Python is an interpreted programming language, defined in the [Python reference](https://docs.python.org/3/reference/index.html). The reference implementation (and most popular interpreter) is [CPython](https://github.com/python/cpython).
 
-CPython is written in C and behaves like most interpreted languages: it parses code into an AST, compiles the AST into byte-code, and runs the byte-code on a virtual (stack-based) machine.
-
 Python provides dictionaries as a built-in data type.
 
 You can define a dictionary in Python like so:
