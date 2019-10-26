@@ -67,9 +67,9 @@ item* _s2 = (void *)(i1->items.next) - (offsetof(item, items));
 
 To summarize:
 
-* The list node is embedded in a containing object.
-* The list node points to another list node embedded in the linked object.
-* The base address of the linked object is calculated by subtracting the offset of the list member from the memory address of the linked list object.
+- The list node is embedded in a containing object.
+- The list node points to another list node embedded in the linked object.
+- The base address of the linked object is calculated by subtracting the offset of the list member from the memory address of the linked list object.
 
 After all that pointer arithmetic, you're probably wondering why anyone in their right mind would use an intrusive linked list over a regular linked list.
 
@@ -77,8 +77,8 @@ After all that pointer arithmetic, you're probably wondering why anyone in their
 
 There are two main reasons to use intrusive lists over non-intrusive linked lists:
 
-* Fewer memory allocations.
-* Less cache thrashing.
+- Fewer memory allocations.
+- Less cache thrashing.
 
 With non-intrusive linked lists, creating a new object and adding it to a list requires two memory allocations: one for the object, and one for the list node. With intrusive linked lists, you only need to allocate one object (since the list node is embedded in the object). This means fewer errors to be handled, because there are half as many cases where memory allocation can fail.
 
@@ -190,7 +190,6 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
 ```
 
 _Note: the `WRITE_ONCE` macro prevents unwanted compiler optimizations when assigning a value._
-
 
 After a list has been initialized, new items can be added with `list_add`:
 
@@ -343,7 +342,7 @@ static void send_sig_all(int sig)
 }
 ```
 
-At this point it's macros all the way down.  The `for_each_process` macro expands into a `for` loop that loops over each item in the list by changing the value of `p`. Starting at `init_task`, it uses the `next_task` macro to reach the next task in the list:
+At this point it's macros all the way down. The `for_each_process` macro expands into a `for` loop that loops over each item in the list by changing the value of `p`. Starting at `init_task`, it uses the `next_task` macro to reach the next task in the list:
 
 ```plain
 #define for_each_process(p) \

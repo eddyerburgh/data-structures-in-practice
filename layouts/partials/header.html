@@ -29,6 +29,14 @@
     {{ if eq (getenv "HUGO_ENV") "production" | or (eq .Site.Params.env "production") }}
     {{ template "_internal/google_analytics_async.html" . }}
     {{ end }}
+    <script>
+      // MathJax = {
+      //   tex: {
+      //     inlineMath: [['\\(', '\\)']]
+      //   }
+      // };
+    </script>
+    <script async type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
   </head>
   <body class="{{if eq .Kind `page` }}single{{else}}list{{ if .IsHome }} home{{ end }}{{end}}">
     <header class="header">

@@ -3,105 +3,93 @@ title: "Trees"
 date: 2019-10-11
 ---
 
-This post is an introduction to the tree data structure. You'll learn what a tree is, why you would use trees, and how the DOM tree is represented in chromium. <!--more-->
-
-Just like arboreal trees, there are many different types of tree data structures. Some types are useful for searching for an item quickly, some are useful for cheaply maintaining a hierarchical order, and some are just useful for representing hierarchical structures.
-
-This post is an introduction to general trees.
+This post is an introduction to the tree data structure. You'll learn what a tree is, why you might use trees, and how the DOM tree is implemented in Blink — the browser-engine used by Chrome. <!--more-->
 
 ## What are trees
 
-Trees are a directed acyclic graph.
+A tree is an abstract data type that represents a hierarchical tree structure, like a family tree.
 
-<!-- TODO: add image of tree -->
+{{< figure src="/images/trees/bernoulli-family-tree.svg" title="Figure 1: The Bernoulli family tree" >}}
 
-Think family tree.
+Trees are defined recursively by Donald Knuth as a finite set \\(T\\) of one or more nodes where:
 
-* Image of tree
-* Tree can have one or many children
-* Directed acyclic graph?
+1. There is one designated root node.
+2. The remaining nodes (excluding the root) are partitioned into \\(m >= 0\\) disjoint sets \\(T_1, ... ,T_m,\\) and each of the sets are also trees.
 
-Trees are full of colorful terminology, there's a root, leaves. Define Leaf nodes. Define root.
+Typically, trees are drawn with the root at the top, like in Figure 2.
 
-<!-- TODO: add image of tree with root, leaves -->
+{{< figure src="/images/trees/tree.svg" title="Figure 2: A tree" >}}
 
-Tree data structures inherited their terminology from the kinship model. A node references its children directly, and it is in turn a parent to those children. The child nodes of a node are siblings.The parent of a parent is its grandparent. Step family and in-laws haven't been included, but I'm sure they could be.
+You can use terminology from family trees to describe the relationship between tree nodes. A node has \\(m\\) child nodes (or \\(m\\) children), and that node is parent to each of those children. Child nodes of a parent are sibling nodes, and the parent of a parent is its grandparent. I haven't heard people referring to nodes as third cousins before, but you certainly could if you wanted to.
 
-<!-- TODO: add image of tree with parent, children -->
+{{< figure src="/images/trees/labeled-tree.svg" title="Figure 3: Relationship of nodes to node A" >}}
 
-The term tree was first coined in 1857 by a British mathematician.
+Trees are a common data structure that are used in many situations, but what's so great about them?
 
-Define tree as a connected, acyclic graph (in other words it's a graph that doesn't contain cycles and each node in the graph is connected by a path). Rooted tree (where a node is designated as root).
+## Why trees?
 
-## Why trees?
+Trees are fantastic for modelling hierarchical data. Humans have been using tree-like structures to represent data for hundreds of years, and so the tree abstract data type was a logical creation.
 
-Trees work well for a variety of reasons:
+Trees can also have properties that make them efficient for searching. B-trees for example, are often used by databases to create indexes for fast retrieval. I'm going to write many future posts about the different types of tree and their uses, but this post is focussed on generic trees.
 
-* Modelling hierarchical data, e.g. family tree.
-* Can be built with special properties to improve cost, e.g. binary search tree
+One use of trees is to represent an HTML document.
 
-Trees have been used for centuries to represent hierarchies. Family trees, content trees (in the original Encyclopedia), .
+## The DOM tree
 
-## How represented in DOM
+The DOM (Document Object Model) is an interface for interacting with documents, usually an HTML document.
 
-The DOM (Document Object Model) provides a way to interact with an HTML document in JavaScript running in a browser.
+HTML uses a style of markdown that builds a structured document. That document can be represented as a tree, with a `Document` as the root node.
 
-HTML documents are structured documents that can be represented as a tree. For example:
+For example, consider the following HTML:
 
-```plain
-document
-├── head
-│   └── title
-└── body
-    ├── h1
-    ├── paragraph
-    ├──ol
-    │   ├── li
-    │   └── li
-    └── footer
+```html
+<!DOCTYPE html>
+<head>
+  <title>My page</title>
+</head>
+<body>
+  Some text.
+</body>
 ```
 
-The DOM is defined in .
+This HTML is represented by the following DOM tree:
 
-Trees work well for representing HTML documents because an HTML document is structured. It uses a style of markdown that builds tree data structures.
+```plain
+Document
+├── Doctype: html
+├── Element: head
+│   └── Element: title
+│       └── Text
+└── Element: body
+    └── Text
+```
 
-<!-- TODO: DOM HTML image -->
+The DOM is implemented in all major browsers.
 
-This is well-represented as a tree, which it is specifies in the DOM spec defines the object model as a tree.
-
-
-Blink builds parses HTML documents into a DOM tree. The DOM is used both to internally represent the DOM, and to implement the JavaScript DOM API.
+The rest of the post will look at how the DOM is implemented in Blink, the browser-engine used by Chrome. Blink is responsible for parsing HTML documents and rendering the document in the browser. It creates a DOM tree to both represent the DOM and to implement the JavaScript DOM API.
 
 The rest of this post will look at how Blink represents the DOM, and how it traverses the DOM when `document.querySelectorAll()` is called.
 
 ### Representing DOM nodes in chromium
 
-The DOM tree can contain several different types of nodes, like text nodes, and comment nodes. This section will focus on DOM elements (check correct name).
+The DOM tree can contain several different types of nodes, such as text nodes and comment nodes. To keep things simple, this posts focusses on element nodes.
 
-Element nodes contain pointers to their parents, their first child, and their last child. Siblings are represented as a linked list, where each sibling contains a pointer to its next sibling.
+Element nodes contain pointers to their parents, their first child, and their last child. Siblings are represented as a linked list, where each sibling contains a pointer to its next and previous sibling.
 
-<!-- TODO: Add image of nodes connected in tree -->
+{{< figure src="/images/trees/blink-dom-tree.svg" title="Figure 4: Elements in a tree" >}}
 
-A DOM node is represented with an `Element` object(CHECK). Each Element object contains a pointer to its first child and last child and its parent. Siblings are linked lists, with one sibling pointing to the next. This is because ??
-
-Being C++, there's plenty of inheritance. An `Element` inherits from `ContainerNode`, which includes pointers to child nodes. `first_child_`: The meaning is obvious and - `last_child_`.
+Blink is written in C++. Being C++, there's plenty of inheritance used to representing a DOM tree. Each `Element` inherits from a `ContainerNode` class, which includes pointers to the child nodes: `first_child_` and `last_child_`.
 
 ```cpp
 class CORE_EXPORT ContainerNode : public Node {
- public:
-  // ..
-  HTMLCollection* Children();
-
-  Element* QuerySelector(const AtomicString& selectors);
-  // ..
-
+ // ..
  private:
   TraceWrapperMember<Node> first_child_;
   TraceWrapperMember<Node> last_child_;
 };
 ```
 
-ContainerNode inherits from the `Node` class. The `Node` contains a pointer: `parent_or_shadow_host_node_`, `previous_`: Points to the previous sibling, `next_`: Points to the next sibling. The class also contains methods for interacting with the node, for example `nextSibling()`:
+`ContainerNode` inherits from the `Node` class. `Node` contains a pointer to the parent: `parent_or_shadow_host_node_` (I'm going to ignore the shadow trees in this post), as well as the `previous_` and `next_` pointers that point to the siblings. `ContainerNode` also contains methods for accessing the siblings, for example `nextSibling()`:
 
 ```cpp
 class CORE_EXPORT Node : public EventTarget {
@@ -118,23 +106,27 @@ class CORE_EXPORT Node : public EventTarget {
 };
 ```
 
+So that's how the tree is represented: using firstChild and lastChild pointers, and having each sibling point to the next.
+
 ### Traversing the tree
 
 You can access DOM elements matching a selector using the `querySelectorAll()` method:
 
 ```js
-document.querySelectorAll('.some-class')
+document.querySelectorAll('.some-class');
 ```
 
-Blink uses range-based for loops and iterators to implement the traversal. I'll explain how these work, so don't worry if you're not familiar with C++.
+<!-- Blink uses range-based for loops and iterators to implement the traversal. I'll explain how these work, so don't worry if you're not familiar with C++. -->
 
-Will search the DOM tree for all matching elements. The traversal is in pre-order, known as **tree order** in the DOM spec. This searches first: root, left node, right node.
+`querySelectorAll()` searches the DOM tree for all elements matching the selector, starting at the first child of the node it was called on. The traversal is specified as a pre-order traversal (called **tree order** in the DOM spec).
 
-<!-- TODO: copy image of pre-order traversal -->
+A pre-order depth-first-search processes the root node first, then performs a tree order traversal on each of its children from left to right recursively.
 
-Chromium (Blink?) creates bindings between V8 (the JavaScript engine) and C++. Calling `document.querySelectorAll` calls a corresponding method on the corresponding C++ `Document` object.
+{{< figure src="/images/trees/pre-order-tree.svg" title="Figure 5: Numbering of nodes visited in pre-order traversal" >}}
 
-In the QuerySelectorAll method, Blink first parses and validates the selector string. If the selector is valid, it executes the query. Blink contains a fast-path for a single class selector, which calls `CollectElementsByClassName()` to traverse each element in preorder order to find matching elements.
+Calling `document.querySelectorAll()` in the browser causes V8 (the JavaScript engine) to call into Blink using bindings specified at ??. V8 calls a `querySelectorAll()` C++ method with the corresponding C++ `Document` object and `querySelectorAll()` then calls `QuerySelectorAll()` on the  `Document` object to get the result.
+
+In `QuerySelectorAll()`, Blink first parses and validates the selector string. If the selector is valid, it executes the query. Blink contains a fast-path for a single class selector, which calls `CollectElementsByClassName()`.
 
 `CollectElementsByClassName()` performs the tree traversal using a range-based for loop, which access each element (`element`) in preorder search:
 
@@ -146,7 +138,7 @@ static void CollectElementsByClassName(
     const CSSSelector* selector,
     typename SelectorQueryTrait::OutputType& output) {
   for (Element& element : ElementTraversal::DescendantsOf(root_node)) {
-    // Check if element matches selector
+    // Process node
   }
 }
 ```
@@ -169,11 +161,11 @@ static void CollectElementsByClassName(/* */) {
 
 The real meat of the traversal is implemented in the range returned by `ElementTraversal::DescendantsOf()`.
 
-If you aren't familiar with C++, a range-based for loop executes a for loop over a range. A range in this case is just an object (`__range`) with `begin()` and `end()` members, which return the first item and the item that the for loop stops at, respectively. You can think of a range-based for loop as `for ( ; __begin != __end; ++__begin)`, where `__begin` is `__range.begin()`, and __end is `__range.end()`.
+If you aren't familiar with C++, a range-based for loop executes a for loop over a range. A range in this case is just an object (`__range`) with `begin()` and `end()` members that return the first item and the item the for loop should stop at, respectively. You can think of a range-based for loop as `for ( ; __begin != __end; ++__begin)`, where `__begin` is `__range.begin()`, and `__end` is `__range.end()`.
 
-The first item returned from the iterator is the first child. On each following iteration, `++` is used to access the next element (CHECK how it's done). Items returned by the `ElementTraversal::DescendantsOf()` range are iterator objects with an overloaded `++` operator member that returns the next element in the traversal.
+The first item returned from the iterator is the first child. On each following iteration, `++` is used to access the next element in the iterator returned by `ElementTraversal::DescendantsOf()`.
 
-Initially, the first element is the left-most child of the root element that querySelectorAll was called on.
+Initially, the first element is the left-most child of the root element that `querySelectorAll()` was called on.
 
 A descendant iterator eventually calls `NodeTraversal::TraverseNextTemplate()` to generate the next element, which is where the traversal logic is implemented.
 
@@ -187,7 +179,7 @@ inline Node* NodeTraversal::TraverseNextTemplate(NodeType& current,
 }
 ```
 
-If the node doesn't have any children, then it calls `nextSibling()` (`current.next_`):
+If the node doesn't have any children, it calls `nextSibling()` (`current.next_`):
 
 ```cpp
 template <class NodeType>
@@ -254,7 +246,6 @@ Trees are great for representing hierarchical data.
 The DOM is represented as a tree, and Chrome uses a tree structure internally to represent the DOM.
 
 Trees can have lots of interesting properties that make them great for a variety of use-cases. Future posts will look at how different trees are used to implement databases, fast-lookup in Linux, and many more.
-
 
 ## TODO
 
