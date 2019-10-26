@@ -116,19 +116,17 @@ You can access DOM elements matching a selector using the `querySelectorAll()` m
 document.querySelectorAll('.some-class');
 ```
 
-<!-- Blink uses range-based for loops and iterators to implement the traversal. I'll explain how these work, so don't worry if you're not familiar with C++. -->
-
 `querySelectorAll()` searches the DOM tree for all elements matching the selector, starting at the first child of the node it was called on. The traversal is specified as a pre-order traversal (called **tree order** in the DOM spec).
 
 A pre-order depth-first-search processes the root node first, then performs a tree order traversal on each of its children from left to right recursively.
 
 {{< figure src="/images/trees/pre-order-tree.svg" title="Figure 5: Numbering of nodes visited in pre-order traversal" >}}
 
-Calling `document.querySelectorAll()` in the browser causes V8 (the JavaScript engine) to call into Blink using bindings specified at ??. V8 calls a `querySelectorAll()` C++ method with the corresponding C++ `Document` object and `querySelectorAll()` then calls `QuerySelectorAll()` on the  `Document` object to get the result.
+Calling `document.querySelectorAll()` in the browser causes V8 (the JavaScript engine) to call into Blink using bindings created at compile-time. V8 calls a `querySelectorAll()` C++ method with the corresponding C++ `Document` object. `querySelectorAll()` then calls `QuerySelectorAll()` on the `Document` object to get the result.
 
 In `QuerySelectorAll()`, Blink first parses and validates the selector string. If the selector is valid, it executes the query. Blink contains a fast-path for a single class selector, which calls `CollectElementsByClassName()`.
 
-`CollectElementsByClassName()` performs the tree traversal using a range-based for loop, which access each element (`element`) in preorder search:
+`CollectElementsByClassName()` performs the tree traversal using a range-based for loop, which iterates over each element in pre-order search:
 
 ```cpp
 template <typename SelectorQueryTrait>
@@ -161,9 +159,9 @@ static void CollectElementsByClassName(/* */) {
 
 The real meat of the traversal is implemented in the range returned by `ElementTraversal::DescendantsOf()`.
 
-If you aren't familiar with C++, a range-based for loop executes a for loop over a range. A range in this case is just an object (`__range`) with `begin()` and `end()` members that return the first item and the item the for loop should stop at, respectively. You can think of a range-based for loop as `for ( ; __begin != __end; ++__begin)`, where `__begin` is `__range.begin()`, and `__end` is `__range.end()`.
+If you aren't familiar with C++, a range-based for loop executes a for loop over a range. A range can just be an object (`__range`) with `begin()` and `end()` members that return the first item and the item the for loop should stop at, respectively. You can think of a range-based for loop as `for ( ; __begin != __end; ++__begin)`, where `__begin` is `__range.begin()`, and `__end` is `__range.end()`.
 
-The first item returned from the iterator is the first child. On each following iteration, `++` is used to access the next element in the iterator returned by `ElementTraversal::DescendantsOf()`.
+The first item returned by the iterator is the first child. On each following iteration, `++` is used to access the next element in the iterator returned by `ElementTraversal::DescendantsOf()`.
 
 Initially, the first element is the left-most child of the root element that `querySelectorAll()` was called on.
 
@@ -246,7 +244,3 @@ Trees are great for representing hierarchical data.
 The DOM is represented as a tree, and Chrome uses a tree structure internally to represent the DOM.
 
 Trees can have lots of interesting properties that make them great for a variety of use-cases. Future posts will look at how different trees are used to implement databases, fast-lookup in Linux, and many more.
-
-## TODO
-
-- Check terminology for for-loop, how is element created each loop, pointers?
