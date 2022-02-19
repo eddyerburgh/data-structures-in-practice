@@ -3,11 +3,11 @@ title: "Hash tables"
 date: 2019-10-08
 ---
 
-In this post you'll learn what hash tables are, why you would use them, and how they're used to implement dictionaries in the most popular Python interpreter — CPython. <!--more-->
+In this post you will learn what hash tables are, why you would use them, and how they are used to implement dictionaries in the most popular Python interpreter—CPython. <!--more-->
 
 ## What are hash tables?
 
-Hash tables are an implementation of the **dictionary** abstract data type, used for storing key-value pairs.
+Hash tables are an implementation of the dictionary abstract data type, used for storing key-value pairs.
 
 The main dictionary operations are:
 
@@ -15,9 +15,9 @@ The main dictionary operations are:
 - `get_item(key)`
 - `delete_item(key)`
 
-A dictionary is a useful data type that's implemented in most languages — as objects in JavaScript, hashes in Ruby, and dictionaries in Python, to name just a few. Often, dictionaries are implemented with hash tables.
+A dictionary is a useful data type that's implemented in most languages—as objects in JavaScript, hashes in Ruby, and dictionaries in Python (to name just a few). Often, dictionaries are implemented using hash tables.
 
-A **hash table** stores items in an array. The index for an item is calculated from the key using a **hashing function**, which generates a fixed-size hash value from an input of arbitrary size.
+A **hash table** stores items in an array—allowing for random access (in the best case). The index for an item is calculated from the key using a **hashing function** which generates a fixed-size hash value from an input of arbitrary size.
 
 Commonly, this is done in two steps:
 
@@ -36,15 +36,15 @@ It's possible that a key maps to the same index as another key. This is known as
 
 The two most common strategies for collision resolution are chaining and open addressing.
 
-**Chaining** is where each item in the hash table array is a list. When an item is added to the array at an index, it's added to corresponding list.
+**Chaining** is where each item in the backing array is a list. When an item is added to the array at an index, it's added to corresponding list.
 
 {{< figure src="/images/hash-tables/hash-table-chaining.svg" title="Figure 1: A hash table using chaining" >}}
 
-**Open addressing** handles collisions by searching for an empty slot in the array by following a deterministic sequence. This checking is known as **probing**, and the sequence is known as a probing sequence. A simple probing sequence is to check each slot one after the other.
+**Open addressing** handles collisions by searching for an empty slot in the array while following a deterministic sequence. This checking is known as **probing**, and the sequence is known as a probing sequence. A simple probing sequence is to check each slot one after the other.
 
 {{< figure src="/images/hash-tables/hash-table-open-addressing.svg" title="Figure 2: A hash table using open addressing" >}}
 
-This post will look at hash tables in CPython which uses open addressing.
+This post will look at hash tables in CPython, which uses open addressing.
 
 So what are the benefit of hash tables?
 
@@ -54,9 +54,9 @@ Commonly, dictionaries are implemented with either search trees (which will be c
 
 Hash tables are (slightly) simpler to implement than search trees and have better average-case performance.
 
-CPython in particular uses hash tables because, compared to B-trees, hash tables give "better performance for lookup (the most common operation by far) under most circumstances, and the implementation is simpler".
+CPython in particular uses hash tables because, compared to B-trees, hash tables give "better performance for lookup (the most common operation by far) under most circumstances, and the implementation is simpler" (according to the Python docs).
 
-Although hash tables have better average-case performance than search trees, they have much more extreme worst-case behavior.
+Although hash tables have better average-case performance than search trees, they have poorer worst-case behavior.
 
 The time complexity for hash table operations:
 
@@ -82,8 +82,6 @@ Although hash tables sound simple in theory, there are many nuances to implement
 
 Python is an interpreted programming language, defined in the [Python reference](https://docs.python.org/3/reference/index.html). The reference implementation (and most popular interpreter) is [CPython](https://github.com/python/cpython).
 
-Python provides dictionaries as a built-in data type.
-
 You can define a dictionary in Python like so:
 
 ```python
@@ -94,7 +92,7 @@ tel = {
 }
 ```
 
-You can access items from a dictionary using the subscript (`[]`) notation:
+You can access items from a dictionary using subscript notation:
 
 ```python
 print(tel['alice']) # 2025550143
@@ -110,7 +108,9 @@ The CPython dictionary hash tables store items in an array and use open addressi
 
 Python optimizes hash tables into combined tables and split tables (which are optimized for dictionaries used to fill the `__dict__` slot of an object). For simplicity, this post will only look at combined tables.
 
-In a combined table, the hash table has two important arrays. One is the entries array. The **entries array** stores entry objects that contain the key and value stored in the hash table. The order of entries doesn't change as the table is resized.
+In a combined table, the hash table has two important arrays—the entries array and the indices array. 
+
+The **entries array** holds entry objects that contain the key and value stored in the hash table. The order of entries doesn't change as the table is resized.
 
 The other array is the indices array that acts as the hash table. The **indices array** elements contain the index of their corresponding entry in the entries array.
 
@@ -243,7 +243,7 @@ So that's how CPython generates the initial index `i`. If the slot at index `i` 
 
 Conflict resolution occurs when an element already exists at an index generated from a new key. CPython uses open addressing to resolve conflicts.
 
-The simplest implementation of open addressing is to linearly search through the array in case of a conflict. This is known as linear probing:
+The simplest implementation of open addressing is to linearly scan through the array in case of a conflict. This is known as linear probing:
 
 ```c
 while(1) {
@@ -253,7 +253,7 @@ while(1) {
 }
 ```
 
-Linear probing can be inefficient in CPython, because some of the CPython hash functions result in many keys mapping to the same index. If there are many collisions at the same index, linear probing results in clusters of active slots causing the linear probe to go through many iterations before finding a match.
+Linear probing can be inefficient in CPython, because some of the CPython hash functions result in many keys mapping to the same index. If there are multiple collisions at the same index, linear probing results in clusters of active slots causing the linear probe to go through many iterations before finding a match.
 
 {{< figure src="/images/hash-tables/hash-table-clustering.svg" title="Figure 5: Multiple collisions with linear probing" >}}
 
@@ -272,7 +272,7 @@ The next part of the hash table to discuss is deletion.
 
 When items are deleted from a dictionary, the entry in the entries array is deleted (set to `NULL`) and the slot in the indices array is put in a dummy state by adding a negative value to the slot.
 
-The reason items aren't removed from the indices array when they are deleted is because it would mess up probing that had previously run when the index was active.
+The reason items aren't removed from the indices array when they are deleted is because it would break probing that had previously run when the index was active.
 
 When a dictionary is resized, any entries that were deleted since the last resizing aren't copied over to the new dictionary.
 
@@ -644,6 +644,6 @@ That's an overview of the CPython dictionary implementation. If you're intereste
 
 ## Conclusion
 
-Hash tables are a popular way to implement the dictionary data type. Theoretically they are intuitive to understand. However, real-life implementations of hash tables can be complex.
+Hash tables are a popular way to implement the dictionary data type. They are intuitive to understand at a high-level, however, real-life implementations of hash tables can be quite complex.
 
 Future posts in this series will focus on different search trees that can be used to implement the dictionary data type as an alternative to hash tables.
